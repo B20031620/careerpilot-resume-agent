@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareerPilot - 历史报告</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed": "#fcdeb5",
+                        "tertiary": "#000000",
+                        "surface-muted": "#F8FAFC",
+                        "on-primary-container": "#7c839b",
+                        "on-secondary-fixed": "#001a42",
+                        "secondary": "#0058be",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#d8e2ff",
+                        "agent-running": "#E0F2FE",
+                        "on-secondary-fixed-variant": "#004395",
+                        "on-tertiary-fixed-variant": "#574425",
+                        "on-secondary": "#ffffff",
+                        "risk-high": "#EF4444",
+                        "inverse-on-surface": "#f3f0f2",
+                        "surface-dim": "#dcd9db",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#271901",
+                        "outline": "#76777d",
+                        "on-error-container": "#93000a",
+                        "inverse-surface": "#303032",
+                        "surface-variant": "#e4e2e4",
+                        "on-surface-variant": "#45464d",
+                        "on-primary-fixed": "#131b2e",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "tertiary-fixed-dim": "#dec29a",
+                        "surface-container-high": "#eae7e9",
+                        "on-surface": "#1b1b1d",
+                        "primary-container": "#131b2e",
+                        "inverse-primary": "#bec6e0",
+                        "primary-fixed": "#dae2fd",
+                        "text-secondary": "#475569",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#98805d",
+                        "agent-accent": "#0284C7",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#f6f3f5",
+                        "surface": "#fcf8fa",
+                        "secondary-container": "#2170e4",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#000000",
+                        "on-tertiary-fixed": "#271901",
+                        "border-subtle": "#E2E8F0",
+                        "background": "#fcf8fa",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary-container": "#fefcff",
+                        "on-background": "#1b1b1d",
+                        "risk-low": "#10B981",
+                        "surface-bright": "#fcf8fa",
+                        "surface-container-lowest": "#ffffff",
+                        "risk-medium": "#F59E0B",
+                        "surface-tint": "#565e74",
+                        "surface-container-highest": "#e4e2e4",
+                        "text-primary": "#0F172A",
+                        "surface-container": "#f0edef",
+                        "primary-fixed-dim": "#bec6e0",
+                        "outline-variant": "#c6c6cd"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "stack-gap": "16px",
+                        "panel-padding": "20px",
+                        "gutter": "24px",
+                        "container-max-width": "1280px",
+                        "sidebar-width": "260px",
+                        "section-margin": "32px"
+                    },
+                    fontFamily: {
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "h1": ["Manrope"],
+                        "h2": ["Manrope"],
+                        "status": ["Inter"],
+                        "h3": ["Manrope"]
+                    },
+                    fontSize: {
+                        "body-lg": ["16px", { lineHeight: "26px", fontWeight: "400" }],
+                        "label-caps": ["11px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "body-sm": ["12px", { lineHeight: "18px", fontWeight: "400" }],
+                        "body-md": ["14px", { lineHeight: "22px", fontWeight: "400" }],
+                        "h1": ["24px", { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "h2": ["20px", { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "status": ["13px", { lineHeight: "20px", fontWeight: "500" }],
+                        "h3": ["16px", { lineHeight: "24px", fontWeight: "600" }]
+                    }
+                }
+            }
+        };
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased overflow-hidden">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-sidebar-width bg-surface border-r border-border-subtle flex flex-col py-panel-padding z-50">
+<div class="px-panel-padding mb-8">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[20px]" data-icon="flight_takeoff">flight_takeoff</span>
+</div>
+<div>
+<h1 class="font-h2 text-h2 font-bold text-primary">CareerPilot</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">职途助手</p>
+</div>
+</div>
+</div>
+<div class="px-panel-padding mb-6">
+<button class="w-full bg-primary text-on-primary rounded-lg py-2 flex justify-center items-center gap-2 hover:bg-primary-fixed-variant transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
+<span class="font-body-md">新建任务</span>
+</button>
+</div>
+<nav class="flex-1 overflow-y-auto px-4 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body-md">工作台</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-body-md">简历分析</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="target">target</span>
+<span class="font-body-md">岗位匹配</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="edit_note">edit_note</span>
+<span class="font-body-md">简历润色</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="package_2">package_2</span>
+<span class="font-body-md">项目包装</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="record_voice_over">record_voice_over</span>
+<span class="font-body-md">模拟面试</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="font-body-md">职场沟通</span>
+</a>
+<!-- Active Tab -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-secondary font-bold bg-secondary-fixed/30 scale-[0.98] transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="history" data-weight="fill" style="font-variation-settings: 'FILL' 1;">history</span>
+<span class="font-body-md">历史报告</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150 mt-auto" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md">设置</span>
+</a>
+</nav>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-var(--sidebar-width))] h-16 bg-surface/80 backdrop-blur-md border-b border-border-subtle flex justify-between items-center px-gutter z-40 transition-all duration-200 ease-in-out">
+<div></div> <!-- Left aligned items in topbar if any -->
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<button class="px-4 py-1.5 border border-border-subtle rounded text-on-surface-variant font-status hover:bg-surface-container-low transition-colors">
+                导出报告
+            </button>
+<button class="px-4 py-1.5 bg-primary text-on-primary rounded font-status hover:bg-primary-fixed-variant transition-colors">
+                核心操作
+            </button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-border-subtle ml-2">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A professional headshot avatar of a modern corporate worker, set against a clean, light mode studio background. The lighting is soft and flattering, emphasizing a trustworthy and competent demeanor. The overall aesthetic aligns with a high-end, minimal SaaS platform, utilizing subtle tones and sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAl2L4KtynKEPwO0USbUdZqYdpHL_ex0FWTXToWMZzKkAmxE3w4iyrjtMbERH8q6_3PG2w_6DMr8aMnz8QEyMPxejTaaHMNkHmsN8-q9-rKvwifR-lC3xvBK2C0yiZMRmW1yVtS0Uz6p0b8IeS0YmWs6AK1PXjAZHeFiUcvq11tziqBO1qLQNw3k4rBO1xNTq7FhNyD1faBx4_Zuukzx_EjxlqUjvTIcZToJzVQIh_Ucq5FxhXrQaCfb9y6tKVheeMgGgQZjrfKcGq-"/>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-sidebar-width mt-16 p-section-margin h-[calc(100vh-64px)] flex flex-col gap-stack-gap">
+<!-- Page Header -->
+<div class="flex flex-col gap-1">
+<h2 class="font-h1 text-h1 text-primary">历史报告</h2>
+<p class="font-body-md text-on-surface-variant">管理您的求职准备资产，回顾 AI 深度分析报告。</p>
+</div>
+<!-- Toolbar -->
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-4">
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-border-subtle rounded-lg font-body-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all" placeholder="搜索报告名称、岗位..." type="text"/>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1.5 bg-secondary-fixed/30 text-secondary font-status rounded-md border border-secondary/20">全部</button>
+<button class="px-3 py-1.5 bg-surface-container-lowest text-on-surface-variant font-status rounded-md border border-border-subtle hover:bg-surface-container-low">简历分析</button>
+<button class="px-3 py-1.5 bg-surface-container-lowest text-on-surface-variant font-status rounded-md border border-border-subtle hover:bg-surface-container-low">岗位匹配</button>
+<button class="px-3 py-1.5 bg-surface-container-lowest text-on-surface-variant font-status rounded-md border border-border-subtle hover:bg-surface-container-low">面试报告</button>
+<button class="px-3 py-1.5 bg-surface-container-lowest text-on-surface-variant font-status rounded-md border border-border-subtle hover:bg-surface-container-low">沟通建议</button>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="text-on-surface-variant font-body-sm flex items-center gap-1 hover:text-primary">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+                    批量删除
+                </button>
+</div>
+</div>
+<!-- Dual Pane Layout -->
+<div class="flex flex-1 gap-gutter overflow-hidden">
+<!-- Left Pane: List -->
+<div class="flex-1 bg-surface-container-lowest border border-border-subtle rounded-xl flex flex-col overflow-hidden">
+<!-- List Header -->
+<div class="flex items-center px-4 py-3 border-b border-border-subtle bg-surface-muted">
+<div class="w-10"><input class="rounded border-outline-variant text-secondary focus:ring-secondary" type="checkbox"/></div>
+<div class="flex-1 font-label-caps text-on-surface-variant">报告信息</div>
+<div class="w-32 font-label-caps text-on-surface-variant text-center">AI 评分/状态</div>
+<div class="w-32 font-label-caps text-on-surface-variant text-center">生成日期</div>
+<div class="w-24 font-label-caps text-on-surface-variant text-right">操作</div>
+</div>
+<!-- List Items -->
+<div class="flex-1 overflow-y-auto">
+<!-- Active Item -->
+<div class="flex items-center px-4 py-4 border-b border-border-subtle bg-agent-running/30 cursor-pointer">
+<div class="w-10"><input class="rounded border-outline-variant text-secondary focus:ring-secondary" type="checkbox"/></div>
+<div class="flex-1 flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-secondary-fixed/50 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+</div>
+<div>
+<div class="font-h3 text-text-primary mb-0.5">产品经理核心竞争力分析_v2</div>
+<div class="font-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="px-1.5 py-0.5 bg-surface-container-high rounded text-[10px]">简历分析</span>
+<span>关联：产品经理简历_最终版.pdf</span>
+</div>
+</div>
+</div>
+<div class="w-32 flex flex-col items-center justify-center">
+<span class="font-h2 text-risk-low">88</span>
+<span class="font-label-caps text-on-surface-variant">极佳</span>
+</div>
+<div class="w-32 text-center font-body-sm text-on-surface-variant">2023-10-27</div>
+<div class="w-24 flex justify-end gap-2">
+<button class="text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined text-[20px]" data-icon="download">download</span></button>
+<button class="text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined text-[20px]" data-icon="visibility">visibility</span></button>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center px-4 py-4 border-b border-border-subtle hover:bg-surface-muted transition-colors cursor-pointer">
+<div class="w-10"><input class="rounded border-outline-variant text-secondary focus:ring-secondary" type="checkbox"/></div>
+<div class="flex-1 flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-surface-container border border-border-subtle flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="target">target</span>
+</div>
+<div>
+<div class="font-h3 text-text-primary mb-0.5">高级产品经理(腾讯) 匹配度报告</div>
+<div class="font-body-sm text-on-surface-variant flex items-center gap-2">
+<span class="px-1.5 py-0.5 bg-surface-container-high rounded text-[10px]">岗位匹配</span>
+<span>关联：JD_腾讯高级产品.docx</span>
+</div>
+</div>
+</div>
+<div class="w-32 flex flex-col items-center justify-center">
+<span class="font-h2 text-risk-medium">72%</span>
+<span class="font-label-caps text-on-surface-variant">需提升</span>
+</div>
+<div class="w-32 text-center font-body-sm text-on-surface-variant">2023-10-26</div>
+<div class="w-24 flex justify-end gap-2">
+<button class="text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined text-[20px]" data-icon="download">download</span></button>
+<button class="text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined text-[20px]" data-icon="visibility">visibility</span></button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Pane: Summary Details -->
+<div class="w-[400px] bg-surface-container-lowest border border-border-subtle rounded-xl flex flex-col overflow-hidden">
+<div class="px-panel-padding py-4 border-b border-border-subtle flex justify-between items-center bg-surface-muted">
+<h3 class="font-h3 text-primary">报告摘要</h3>
+<button class="text-secondary font-body-sm flex items-center gap-1 hover:underline">
+                        完整报告 <span class="material-symbols-outlined text-[16px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<div class="flex-1 p-panel-padding overflow-y-auto flex flex-col gap-6">
+<!-- Summary Card -->
+<div class="bg-surface border border-border-subtle rounded-lg p-4">
+<div class="flex items-center gap-2 mb-2 text-primary">
+<span class="material-symbols-outlined text-[18px]" data-icon="summarize">summarize</span>
+<span class="font-h3 text-sm">整体评价</span>
+</div>
+<p class="font-body-sm text-on-surface-variant leading-relaxed">
+                            该简历结构清晰，项目经验丰富，突出了在数据驱动产品迭代方面的能力。但在展示跨部门协作和大型项目统筹方面略显不足。整体符合高级产品经理的基准要求。
+                        </p>
+</div>
+<!-- Pros & Cons Grid -->
+<div class="grid grid-cols-1 gap-4">
+<div class="border-l-2 border-risk-low pl-3">
+<div class="font-status text-risk-low mb-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="check_circle">check_circle</span> 关键优势
+                            </div>
+<ul class="font-body-sm text-on-surface-variant list-disc list-inside space-y-1">
+<li>数据分析能力突出，有明确的指标收益展示。</li>
+<li>从0到1的产品构建经验完整。</li>
+<li>排版专业，无冗余信息。</li>
+</ul>
+</div>
+<div class="border-l-2 border-risk-medium pl-3">
+<div class="font-status text-risk-medium mb-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="warning">warning</span> 主要短板
+                            </div>
+<ul class="font-body-sm text-on-surface-variant list-disc list-inside space-y-1">
+<li>缺乏对行业趋势的宏观洞察描述。</li>
+<li>团队管理经验体现较弱（如有请补充）。</li>
+</ul>
+</div>
+</div>
+<!-- Next Steps -->
+<div class="mt-2">
+<div class="font-status text-primary mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="trending_up">trending_up</span> 推荐下一步
+                        </div>
+<div class="flex flex-col gap-2">
+<button class="w-full text-left p-3 rounded border border-border-subtle hover:border-secondary hover:bg-secondary-fixed/10 transition-all flex items-center justify-between group">
+<div>
+<div class="font-body-md text-primary group-hover:text-secondary">使用 AI 润色简历</div>
+<div class="font-body-sm text-on-surface-variant">重点优化“团队协作”相关描述</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-secondary" data-icon="edit_note">edit_note</span>
+</button>
+<button class="w-full text-left p-3 rounded border border-border-subtle hover:border-secondary hover:bg-secondary-fixed/10 transition-all flex items-center justify-between group">
+<div>
+<div class="font-body-md text-primary group-hover:text-secondary">发起模拟面试</div>
+<div class="font-body-sm text-on-surface-variant">针对短板进行话术演练</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-secondary" data-icon="record_voice_over">record_voice_over</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

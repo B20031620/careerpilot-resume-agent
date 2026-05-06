@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareerPilot - 职场沟通</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#fcdeb5",
+                      "tertiary": "#000000",
+                      "surface-muted": "#F8FAFC",
+                      "on-primary-container": "#7c839b",
+                      "on-secondary-fixed": "#001a42",
+                      "secondary": "#0058be",
+                      "on-primary": "#ffffff",
+                      "secondary-fixed": "#d8e2ff",
+                      "agent-running": "#E0F2FE",
+                      "on-secondary-fixed-variant": "#004395",
+                      "on-tertiary-fixed-variant": "#574425",
+                      "on-secondary": "#ffffff",
+                      "risk-high": "#EF4444",
+                      "inverse-on-surface": "#f3f0f2",
+                      "surface-dim": "#dcd9db",
+                      "error-container": "#ffdad6",
+                      "tertiary-container": "#271901",
+                      "outline": "#76777d",
+                      "on-error-container": "#93000a",
+                      "inverse-surface": "#303032",
+                      "surface-variant": "#e4e2e4",
+                      "on-surface-variant": "#45464d",
+                      "on-primary-fixed": "#131b2e",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "tertiary-fixed-dim": "#dec29a",
+                      "surface-container-high": "#eae7e9",
+                      "on-surface": "#1b1b1d",
+                      "primary-container": "#131b2e",
+                      "inverse-primary": "#bec6e0",
+                      "primary-fixed": "#dae2fd",
+                      "text-secondary": "#475569",
+                      "error": "#ba1a1a",
+                      "on-tertiary-container": "#98805d",
+                      "agent-accent": "#0284C7",
+                      "on-error": "#ffffff",
+                      "surface-container-low": "#f6f3f5",
+                      "surface": "#fcf8fa",
+                      "secondary-container": "#2170e4",
+                      "on-tertiary": "#ffffff",
+                      "primary": "#000000",
+                      "on-tertiary-fixed": "#271901",
+                      "border-subtle": "#E2E8F0",
+                      "background": "#fcf8fa",
+                      "secondary-fixed-dim": "#adc6ff",
+                      "on-secondary-container": "#fefcff",
+                      "on-background": "#1b1b1d",
+                      "risk-low": "#10B981",
+                      "surface-bright": "#fcf8fa",
+                      "surface-container-lowest": "#ffffff",
+                      "risk-medium": "#F59E0B",
+                      "surface-tint": "#565e74",
+                      "surface-container-highest": "#e4e2e4",
+                      "text-primary": "#0F172A",
+                      "surface-container": "#f0edef",
+                      "primary-fixed-dim": "#bec6e0",
+                      "outline-variant": "#c6c6cd"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-gap": "16px",
+                      "panel-padding": "20px",
+                      "gutter": "24px",
+                      "container-max-width": "1280px",
+                      "sidebar-width": "260px",
+                      "section-margin": "32px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "h1": [
+                              "Manrope"
+                      ],
+                      "h2": [
+                              "Manrope"
+                      ],
+                      "status": [
+                              "Inter"
+                      ],
+                      "h3": [
+                              "Manrope"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "26px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "22px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "h1": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "h2": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "status": [
+                              "13px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "h3": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-text-primary antialiased font-body-md selection:bg-primary-fixed selection:text-primary-container">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-sidebar-width bg-surface border-r border-border-subtle flex flex-col py-panel-padding z-50">
+<!-- Header/Brand -->
+<div class="px-panel-padding mb-section-margin flex items-center gap-3">
+<div class="w-8 h-8 bg-primary text-on-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-body-lg">explore</span>
+</div>
+<div>
+<h1 class="font-h2 text-h2 font-bold text-primary">CareerPilot</h1>
+<p class="font-label-caps text-label-caps text-text-secondary">职途助手</p>
+</div>
+</div>
+<!-- CTA -->
+<div class="px-panel-padding mb-stack-gap">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-2 rounded-md font-status text-status hover:bg-on-surface transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+                新建任务
+            </button>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto px-3 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-body-lg">dashboard</span>
+                工作台
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-body-lg">analytics</span>
+                简历分析
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-body-lg">target</span>
+                岗位匹配
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-body-lg">edit_note</span>
+                简历润色
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-body-lg">package_2</span>
+                项目包装
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-body-lg">record_voice_over</span>
+                模拟面试
+            </a>
+<!-- Active State -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-secondary font-bold bg-secondary-fixed/30 transition-colors font-body-md text-body-md scale-[0.98] duration-150" href="#">
+<span class="material-symbols-outlined text-body-lg" style="font-variation-settings: 'FILL' 1;">chat</span>
+                职场沟通
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-body-lg">history</span>
+                历史报告
+            </a>
+</div>
+<!-- Footer / Settings -->
+<div class="px-3 mt-auto pt-4 border-t border-border-subtle">
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-body-lg">settings</span>
+                设置
+            </a>
+</div>
+</nav>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-surface/80 backdrop-blur-md border-b border-border-subtle flex justify-between items-center h-16 px-gutter ml-sidebar-width transition-all duration-200 ease-in-out">
+<div class="flex items-center gap-4">
+<!-- Space reserved if breadcrumbs or contextual titles are needed here -->
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-variant border border-border-subtle overflow-hidden ml-2 cursor-pointer">
+<div class="w-full h-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-body-sm">
+                    U
+                </div>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-sidebar-width mt-16 p-gutter min-h-screen">
+<div class="max-w-container-max-width mx-auto">
+<!-- Page Header -->
+<div class="mb-section-margin">
+<h1 class="font-h1 text-h1 text-primary flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[28px] text-secondary">forum</span>
+                    职场沟通
+                </h1>
+<p class="font-body-md text-body-md text-text-secondary">专业职业沟通顾问，助您应对求职与职场中的关键对话。</p>
+</div>
+<!-- 2-Column Split Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+<!-- Left Column: Configuration Pane (Col 4/12) -->
+<div class="lg:col-span-4 bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding flex flex-col gap-stack-gap">
+<div class="flex items-center gap-2 border-b border-border-subtle pb-3">
+<span class="material-symbols-outlined text-on-surface-variant">tune</span>
+<h2 class="font-h3 text-h3 text-primary">情境配置</h2>
+</div>
+<!-- Scene Selection -->
+<div class="space-y-2">
+<label class="font-status text-status text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">scene</span>
+                            沟通场景
+                        </label>
+<div class="grid grid-cols-2 gap-2">
+<button class="px-3 py-2 rounded-md border border-border-subtle text-left font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-muted transition-colors">回复 HR</button>
+<button class="px-3 py-2 rounded-md border border-secondary bg-secondary-fixed/30 text-secondary font-status text-status transition-colors ring-1 ring-secondary">薪资谈判</button>
+<button class="px-3 py-2 rounded-md border border-border-subtle text-left font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-muted transition-colors">延期说明</button>
+<button class="px-3 py-2 rounded-md border border-border-subtle text-left font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-muted transition-colors">晋升沟通</button>
+</div>
+</div>
+<!-- Tone Selection -->
+<div class="space-y-2 mt-2">
+<label class="font-status text-status text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">record_voice_over</span>
+                            表达语气
+                        </label>
+<div class="flex flex-wrap gap-2">
+<label class="cursor-pointer relative">
+<input checked="" class="peer sr-only" name="tone" type="radio"/>
+<div class="px-4 py-1.5 rounded-full border border-border-subtle font-body-sm text-body-sm text-text-secondary peer-checked:bg-primary-fixed peer-checked:text-primary peer-checked:border-primary-fixed transition-colors">专业</div>
+</label>
+<label class="cursor-pointer relative">
+<input class="peer sr-only" name="tone" type="radio"/>
+<div class="px-4 py-1.5 rounded-full border border-border-subtle font-body-sm text-body-sm text-text-secondary peer-checked:bg-primary-fixed peer-checked:text-primary peer-checked:border-primary-fixed transition-colors">礼貌</div>
+</label>
+<label class="cursor-pointer relative">
+<input class="peer sr-only" name="tone" type="radio"/>
+<div class="px-4 py-1.5 rounded-full border border-border-subtle font-body-sm text-body-sm text-text-secondary peer-checked:bg-primary-fixed peer-checked:text-primary peer-checked:border-primary-fixed transition-colors">坚定</div>
+</label>
+<label class="cursor-pointer relative">
+<input class="peer sr-only" name="tone" type="radio"/>
+<div class="px-4 py-1.5 rounded-full border border-border-subtle font-body-sm text-body-sm text-text-secondary peer-checked:bg-primary-fixed peer-checked:text-primary peer-checked:border-primary-fixed transition-colors">简洁</div>
+</label>
+</div>
+</div>
+<!-- Input Area -->
+<div class="space-y-2 mt-2 flex-1">
+<label class="font-status text-status text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">edit_document</span>
+                            背景信息与具体诉求
+                        </label>
+<textarea class="w-full h-32 p-3 bg-surface border border-outline-variant rounded-lg font-body-md text-body-md text-primary placeholder-text-secondary/50 focus:border-secondary focus:ring-1 focus:ring-secondary outline-none resize-none transition-all" placeholder="请描述您当前的沟通背景，例如：收到了大厂的Offer，但薪资未达预期，期望能上调10%，目前手里有另一个薪资更高的竞品Offer..."></textarea>
+</div>
+<!-- Action Button -->
+<button class="w-full mt-4 bg-primary text-on-primary py-2.5 rounded-md font-status text-status flex items-center justify-center gap-2 hover:bg-on-surface-variant transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">magic_button</span>
+                        生成沟通建议
+                    </button>
+</div>
+<!-- Right Column: Output Pane (Col 8/12) -->
+<div class="lg:col-span-8 flex flex-col gap-stack-gap">
+<!-- Top Action Bar for Output -->
+<div class="flex justify-between items-center mb-2">
+<div class="flex items-center gap-2 text-agent-accent font-status text-status">
+<span class="material-symbols-outlined text-[18px] animate-pulse">check_circle</span>
+                            已根据「薪资谈判」场景与「专业」语气生成建议
+                        </div>
+<div class="flex gap-2">
+<button class="flex items-center gap-1 px-3 py-1.5 border border-border-subtle rounded text-text-secondary hover:bg-surface-container-low transition-colors font-body-sm text-body-sm bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[16px]">history</span>
+                                保存记录
+                            </button>
+</div>
+</div>
+<!-- Strategy Block -->
+<div class="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-secondary"></div>
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-secondary">lightbulb</span>
+<h3 class="font-h3 text-h3 text-primary">沟通策略解析</h3>
+</div>
+<p class="font-body-md text-body-md text-text-secondary leading-relaxed">
+                            在此场景下，核心目标是展现出您对该机会的极高热情，同时客观看待自身市场价值。采用“感谢认可 + 肯定公司价值 + 抛出客观对比依据 + 表达长期期望”的逻辑框架。避免直接使用强硬的通牒语气，将焦点引向“如何达成双方满意的结果”。
+                        </p>
+</div>
+<!-- Scripts Block (Tabs) -->
+<div class="bg-surface-container-lowest border border-border-subtle rounded-xl flex flex-col">
+<div class="flex border-b border-border-subtle px-panel-padding pt-3 gap-6">
+<button class="pb-3 border-b-2 border-primary font-status text-status text-primary">委婉版本 (推荐)</button>
+<button class="pb-3 border-b-2 border-transparent font-status text-status text-on-surface-variant hover:text-primary transition-colors">直接版本</button>
+</div>
+<div class="p-panel-padding bg-surface-muted/30">
+<div class="bg-surface-container-lowest border border-border-subtle rounded-lg p-4 relative group">
+<button class="absolute top-3 right-3 text-on-surface-variant hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity bg-surface p-1 rounded border border-border-subtle shadow-sm" title="复制文本">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+<p class="font-body-md text-body-md text-primary whitespace-pre-wrap leading-relaxed">尊敬的HR：
+
+非常感谢您和团队的认可，我非常期待能够加入[公司名称]，与如此优秀的团队共事。
+
+在仔细评估了这份Offer的薪资构成后，结合目前的市场水平以及我手中持有的其他几个机会，我发现目前的薪资方案与我的预期还有一定的差距（目前我的期望薪资大约在[具体数字/比例]）。
+
+我个人非常看重[公司名称]所在赛道的发展前景以及这个岗位的长期价值，这也是我首选贵公司的原因。不知道在薪资结构（如底薪或期权部分）上，是否还有沟通和调整的空间？
+
+期待您的回复，无论结果如何，都再次感谢您的支持与协调。</p>
+</div>
+</div>
+</div>
+<!-- Pitfalls Block -->
+<div class="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding border-l-4 border-l-risk-medium">
+<div class="flex items-center gap-2 mb-3 text-risk-medium">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+<h3 class="font-h3 text-h3 text-primary">避坑指南 (高风险表达)</h3>
+</div>
+<ul class="space-y-2">
+<li class="flex items-start gap-2 font-body-sm text-body-sm text-text-secondary">
+<span class="material-symbols-outlined text-risk-high text-[16px] mt-0.5">cancel</span>
+<span><strong>直接下最后通牒：</strong>“如果达不到这个数我就不去了。” —— 容易引起对方反感，切断谈判后路。</span>
+</li>
+<li class="flex items-start gap-2 font-body-sm text-body-sm text-text-secondary">
+<span class="material-symbols-outlined text-risk-high text-[16px] mt-0.5">cancel</span>
+<span><strong>捏造虚假Offer：</strong>“我手里有一个高出30%的Offer。” —— 很多企业要求提供流水或Offer截图证明，一旦被查出属于失信行为。</span>
+</li>
+<li class="flex items-start gap-2 font-body-sm text-body-sm text-text-secondary">
+<span class="material-symbols-outlined text-risk-high text-[16px] mt-0.5">cancel</span>
+<span><strong>过度强调生活压力：</strong>“我房贷比较高，希望能加点薪。” —— 涨薪应基于岗位价值和能力，而非个人生活开销。</span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

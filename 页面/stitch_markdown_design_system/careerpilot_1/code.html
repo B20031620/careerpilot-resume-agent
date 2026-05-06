@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>简历分析 - CareerPilot</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#fcdeb5",
+                      "tertiary": "#000000",
+                      "surface-muted": "#F8FAFC",
+                      "on-primary-container": "#7c839b",
+                      "on-secondary-fixed": "#001a42",
+                      "secondary": "#0058be",
+                      "on-primary": "#ffffff",
+                      "secondary-fixed": "#d8e2ff",
+                      "agent-running": "#E0F2FE",
+                      "on-secondary-fixed-variant": "#004395",
+                      "on-tertiary-fixed-variant": "#574425",
+                      "on-secondary": "#ffffff",
+                      "risk-high": "#EF4444",
+                      "inverse-on-surface": "#f3f0f2",
+                      "surface-dim": "#dcd9db",
+                      "error-container": "#ffdad6",
+                      "tertiary-container": "#271901",
+                      "outline": "#76777d",
+                      "on-error-container": "#93000a",
+                      "inverse-surface": "#303032",
+                      "surface-variant": "#e4e2e4",
+                      "on-surface-variant": "#45464d",
+                      "on-primary-fixed": "#131b2e",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "tertiary-fixed-dim": "#dec29a",
+                      "surface-container-high": "#eae7e9",
+                      "on-surface": "#1b1b1d",
+                      "primary-container": "#131b2e",
+                      "inverse-primary": "#bec6e0",
+                      "primary-fixed": "#dae2fd",
+                      "text-secondary": "#475569",
+                      "error": "#ba1a1a",
+                      "on-tertiary-container": "#98805d",
+                      "agent-accent": "#0284C7",
+                      "on-error": "#ffffff",
+                      "surface-container-low": "#f6f3f5",
+                      "surface": "#fcf8fa",
+                      "secondary-container": "#2170e4",
+                      "on-tertiary": "#ffffff",
+                      "primary": "#000000",
+                      "on-tertiary-fixed": "#271901",
+                      "border-subtle": "#E2E8F0",
+                      "background": "#fcf8fa",
+                      "secondary-fixed-dim": "#adc6ff",
+                      "on-secondary-container": "#fefcff",
+                      "on-background": "#1b1b1d",
+                      "risk-low": "#10B981",
+                      "surface-bright": "#fcf8fa",
+                      "surface-container-lowest": "#ffffff",
+                      "risk-medium": "#F59E0B",
+                      "surface-tint": "#565e74",
+                      "surface-container-highest": "#e4e2e4",
+                      "text-primary": "#0F172A",
+                      "surface-container": "#f0edef",
+                      "primary-fixed-dim": "#bec6e0",
+                      "outline-variant": "#c6c6cd"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-gap": "16px",
+                      "panel-padding": "20px",
+                      "gutter": "24px",
+                      "container-max-width": "1280px",
+                      "sidebar-width": "260px",
+                      "section-margin": "32px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "h1": [
+                              "Manrope"
+                      ],
+                      "h2": [
+                              "Manrope"
+                      ],
+                      "status": [
+                              "Inter"
+                      ],
+                      "h3": [
+                              "Manrope"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "26px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "22px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "h1": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "h2": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "status": [
+                              "13px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "h3": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen overflow-hidden flex">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-sidebar-width bg-surface dark:bg-inverse-surface border-r border-border-subtle flex flex-col py-panel-padding z-50 flex-shrink-0">
+<div class="px-gutter mb-8">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl">flight_takeoff</span>
+</div>
+<div>
+<h1 class="font-h1 text-h1 font-bold text-primary dark:text-on-primary-fixed leading-tight">CareerPilot</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">职途助手</p>
+</div>
+</div>
+<button class="mt-6 w-full flex items-center justify-center gap-2 bg-primary text-on-primary rounded-lg py-2 px-4 font-body-md hover:bg-on-primary-fixed-variant transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+                新建任务
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto px-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md">工作台</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-secondary dark:text-secondary-fixed-dim font-bold bg-secondary-fixed/30 dark:bg-secondary-container/20" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-body-md">简历分析</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined">target</span>
+<span class="font-body-md">岗位匹配</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined">edit_note</span>
+<span class="font-body-md">简历润色</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined">package_2</span>
+<span class="font-body-md">项目包装</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined">record_voice_over</span>
+<span class="font-body-md">模拟面试</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-body-md">职场沟通</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-body-md">历史报告</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors mt-8" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md">设置</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="ml-sidebar-width flex-1 h-full overflow-y-auto bg-surface-muted flex flex-col">
+<!-- Top Header -->
+<header class="px-section-margin py-6 flex-shrink-0">
+<h2 class="font-h2 text-h2 font-bold text-text-primary">简历分析</h2>
+<p class="font-body-md text-text-secondary mt-1">上传或粘贴您的简历，AI 将为您进行深度结构化解析</p>
+</header>
+<div class="px-section-margin pb-section-margin flex-1 flex flex-col lg:flex-row gap-gutter max-w-container-max-width mx-auto w-full">
+<!-- Left Column: Input Area -->
+<div class="w-full lg:w-5/12 flex flex-col gap-stack-gap">
+<div class="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding flex flex-col h-full shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-h3 text-h3 font-semibold text-text-primary">输入简历</h3>
+<span class="font-status text-status text-text-secondary bg-surface-container px-2 py-1 rounded">第 1 步</span>
+</div>
+<!-- Tabs -->
+<div class="flex border-b border-border-subtle mb-4">
+<button class="px-4 py-2 font-body-md text-primary border-b-2 border-primary font-medium">文件上传</button>
+<button class="px-4 py-2 font-body-md text-text-secondary hover:text-primary transition-colors">文本粘贴</button>
+</div>
+<!-- Upload Area -->
+<div class="flex-1 border-2 border-dashed border-border-subtle rounded-lg bg-surface flex flex-col items-center justify-center p-8 text-center hover:bg-surface-container-low transition-colors cursor-pointer group mb-4">
+<span class="material-symbols-outlined text-4xl text-on-primary-container mb-3 group-hover:text-primary transition-colors">cloud_upload</span>
+<p class="font-body-md text-text-primary font-medium">点击或拖拽文件至此处</p>
+<p class="font-body-sm text-text-secondary mt-1">支持 PDF, DOCX, TXT 格式，最大 10MB</p>
+</div>
+<!-- Or Divider -->
+<div class="flex items-center gap-4 mb-4">
+<div class="h-px bg-border-subtle flex-1"></div>
+<span class="font-body-sm text-text-secondary">最近解析</span>
+<div class="h-px bg-border-subtle flex-1"></div>
+</div>
+<!-- Recent File -->
+<div class="flex items-center justify-between p-3 border border-border-subtle rounded-lg bg-surface-muted mb-6">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">description</span>
+<div>
+<p class="font-body-md text-text-primary">前端工程师_张三.pdf</p>
+<p class="font-body-sm text-text-secondary">今天 10:24 • 1.2MB</p>
+</div>
+</div>
+<button class="text-text-secondary hover:text-primary transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<!-- Action Button -->
+<button class="w-full bg-primary text-on-primary font-body-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors mt-auto">
+<span class="material-symbols-outlined text-sm">psychology</span>
+                        开始深度解析
+                    </button>
+</div>
+</div>
+<!-- Right Column: Results & Feedback -->
+<div class="w-full lg:w-7/12 flex flex-col gap-stack-gap">
+<!-- Status Bar -->
+<div class="bg-agent-running/30 border border-agent-accent/20 rounded-xl p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-agent-accent/20 flex items-center justify-center text-agent-accent">
+<span class="material-symbols-outlined text-lg">check</span>
+</div>
+<div>
+<p class="font-body-md text-text-primary font-medium">解析完成</p>
+<p class="font-body-sm text-text-secondary">AI 已提取并结构化 6 个核心模块</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-surface-container-lowest border border-border-subtle rounded-lg font-body-sm text-text-primary hover:bg-surface-container-low transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">target</span>
+                            岗位匹配
+                        </button>
+<button class="px-4 py-2 bg-secondary text-on-secondary rounded-lg font-body-sm flex items-center gap-1 hover:bg-on-secondary-fixed-variant transition-colors">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+                            去润色
+                        </button>
+</div>
+</div>
+<!-- Missing Info Alerts (High Priority) -->
+<div class="bg-surface-container-lowest border border-risk-medium/30 rounded-xl p-panel-padding shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-risk-medium"></div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-risk-medium mt-0.5">warning</span>
+<div>
+<h3 class="font-h3 text-h3 font-semibold text-text-primary mb-2">AI 洞察：简历风险与缺失</h3>
+<ul class="space-y-3 mt-3">
+<li class="flex items-start gap-2 bg-surface p-3 rounded border border-border-subtle">
+<span class="material-symbols-outlined text-risk-high text-[18px] mt-0.5">error</span>
+<div>
+<p class="font-body-md text-text-primary font-medium">项目经历缺少个人职责描述</p>
+<p class="font-body-sm text-text-secondary mt-1">在“电商后台管理系统”项目中，仅描述了系统功能，未说明您的具体贡献。建议补充。</p>
+</div>
+</li>
+<li class="flex items-start gap-2 bg-surface p-3 rounded border border-border-subtle">
+<span class="material-symbols-outlined text-risk-medium text-[18px] mt-0.5">help</span>
+<div>
+<p class="font-body-md text-text-primary font-medium">技能印证断裂</p>
+<p class="font-body-sm text-text-secondary mt-1">技能栈中声明了熟练使用 `LangChain`，但下方任何一段工作/项目经历中都没有提到使用该技术的证据。</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Structured Data Grid -->
+<div class="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm flex-1">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-h3 text-h3 font-semibold text-text-primary">结构化知识图谱</h3>
+<span class="font-label-caps text-label-caps text-text-secondary uppercase tracking-wider">AI 解析结果预览</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Module Card -->
+<div class="border border-border-subtle rounded-lg p-4 bg-surface hover:border-outline-variant transition-colors">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2 text-text-primary">
+<span class="material-symbols-outlined text-[18px]">person</span>
+<span class="font-body-md font-medium">基本信息</span>
+</div>
+<span class="text-risk-low material-symbols-outlined text-[16px]">check_circle</span>
+</div>
+<p class="font-body-sm text-text-secondary">完整度 100%</p>
+<p class="font-body-sm text-text-primary mt-2">已识别：姓名、联系方式、求职意向等 5 项核心字段。</p>
+</div>
+<!-- Module Card -->
+<div class="border border-border-subtle rounded-lg p-4 bg-surface hover:border-outline-variant transition-colors">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2 text-text-primary">
+<span class="material-symbols-outlined text-[18px]">code</span>
+<span class="font-body-md font-medium">技能栈</span>
+</div>
+<span class="text-risk-medium material-symbols-outlined text-[16px]">info</span>
+</div>
+<p class="font-body-sm text-text-secondary">需印证</p>
+<p class="font-body-sm text-text-primary mt-2">已识别 12 项技术标签。存在 2 项未在经历中体现的悬空技能。</p>
+</div>
+<!-- Module Card -->
+<div class="border border-border-subtle rounded-lg p-4 bg-surface hover:border-outline-variant transition-colors">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2 text-text-primary">
+<span class="material-symbols-outlined text-[18px]">work</span>
+<span class="font-body-md font-medium">工作经历</span>
+</div>
+<span class="text-risk-high material-symbols-outlined text-[16px]">error</span>
+</div>
+<p class="font-body-sm text-text-secondary">量化成果：缺失</p>
+<p class="font-body-sm text-text-primary mt-2">包含 2 段经历。缺少关键的业务数据指标支持（如提升效率的百分比）。</p>
+</div>
+<!-- Module Card -->
+<div class="border border-border-subtle rounded-lg p-4 bg-surface hover:border-outline-variant transition-colors">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2 text-text-primary">
+<span class="material-symbols-outlined text-[18px]">school</span>
+<span class="font-body-md font-medium">教育经历</span>
+</div>
+<span class="text-risk-low material-symbols-outlined text-[16px]">check_circle</span>
+</div>
+<p class="font-body-sm text-text-secondary">完整度 100%</p>
+<p class="font-body-sm text-text-primary mt-2">识别到本科学历，计算机科学与技术专业，毕业时间逻辑合理。</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
