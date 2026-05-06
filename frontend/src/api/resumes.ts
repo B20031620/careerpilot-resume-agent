@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete } from './client'
+import { apiGet, apiPost, apiDelete, apiPostForm } from './client'
 
 export interface ResumeCreate {
   title: string
@@ -28,6 +28,13 @@ export interface ResumeListItem {
 
 export async function createResume(data: ResumeCreate): Promise<ResumeRead> {
   return apiPost<ResumeRead>('/api/resumes', data)
+}
+
+export async function uploadResumeFile(file: File, title?: string): Promise<ResumeRead> {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (title?.trim()) formData.append('title', title.trim())
+  return apiPostForm<ResumeRead>('/api/resumes/upload', formData)
 }
 
 export async function listResumes(): Promise<ResumeListItem[]> {

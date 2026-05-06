@@ -1,6 +1,6 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { ApiError } from '../api/client'
-import { createResume, type ResumeRead } from '../api/resumes'
+import { createResume, uploadResumeFile, type ResumeRead } from '../api/resumes'
 
 export default function ResumeAnalysisPage() {
   const [title, setTitle] = useState('')
@@ -21,28 +21,36 @@ export default function ResumeAnalysisPage() {
 
     setError(null)
     const fileName = file.name
-    const supportedTextFile = /\.(txt|md|markdown|csv|json|log)$/i.test(fileName) || file.type.startsWith('text/')
-    if (!supportedTextFile) {
-      setError('当前演示版支持读取 .txt、.md、.csv、.json 等文本文件；PDF 或 Word 请先复制正文粘贴。')
+    const supportedFile = /\.(docx|doc|txt|md|markdown|csv|json|log)$/i.test(fileName) || file.type.startsWith('text/')
+    if (!supportedFile) {
+      setError('当前支持 .docx、.doc、.txt、.md、.csv、.json 等格式。PDF 请先复制正文粘贴。')
       event.target.value = ''
       return
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setError('文件过大，请选择 2MB 以内的文本简历，或复制核心内容粘贴。')
+    if (file.size > 5 * 1024 * 1024) {
+      setError('文件过大，请选择 5MB 以内的简历文件，或复制核心内容粘贴。')
       event.target.value = ''
       return
     }
 
+    setLoading(true)
+    setSelectedFileName(fileName)
     try {
-      const text = await file.text()
-      setRawText(text)
-      setSelectedFileName(fileName)
-      if (!title.trim()) {
-        setTitle(fileName.replace(/\.[^.]+$/, ''))
+      const resume = await uploadResumeFile(file, title.trim() || undefined)
+      setResult(resume)
+      setTitle(resume.title)
+      setRawText(resume.raw_text)
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setError(e.detail)
+      } else {
+        setError('上传文件失败，请检查文件格式或后端服务。')
       }
-    } catch {
-      setError('读取文件失败，请重新选择文件或直接粘贴文本。')
+      setSelectedFileName('')
+      event.target.value = ''
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -89,7 +97,7 @@ export default function ResumeAnalysisPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".txt,.md,.markdown,.csv,.json,.log,text/*"
+              accept=".docx,.doc,.txt,.md,.markdown,.csv,.json,.log,text/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -98,7 +106,8 @@ export default function ResumeAnalysisPage() {
               <button
                 type="button"
                 onClick={handlePickFile}
-                className="px-4 py-2 font-body-md text-text-secondary hover:text-primary transition-colors flex items-center gap-1"
+                disabled={loading}
+                className="px-4 py-2 font-body-md text-text-secondary hover:text-primary transition-colors flex items-center gap-1 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[18px]">upload_file</span>
                 文件上传
@@ -138,7 +147,7 @@ export default function ResumeAnalysisPage() {
 
             <textarea
               className="w-full flex-1 min-h-[200px] border border-border-subtle rounded-lg p-3 font-body-md text-text-primary bg-surface resize-none focus:outline-none focus:border-agent-accent mb-4"
-              placeholder="请粘贴简历原文，或点击「文件上传」读取文本文件..."
+              placeholder="请粘贴简历原文，或点击「文件上传」上传 DOCX/DOC/文本文件..."
               value={rawText}
               onChange={(e) => {
                 setRawText(e.target.value)
@@ -158,7 +167,7 @@ export default function ResumeAnalysisPage() {
               className="w-full bg-primary text-on-primary font-body-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors mt-auto disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-sm">{loading ? 'hourglass_top' : 'psychology'}</span>
-              {loading ? '正在创建...' : '开始深度解析'}
+              {loading ? '正在处理...' : '开始深度解析'}
             </button>
           </div>
         </div>

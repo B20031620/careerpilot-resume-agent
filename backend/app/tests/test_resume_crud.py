@@ -1,4 +1,6 @@
 import pytest
+from io import BytesIO
+from zipfile import ZipFile
 
 
 @pytest.mark.asyncio
@@ -14,6 +16,67 @@ async def test_create_resume(client):
     assert data["source_type"] == "text"
     assert data["parse_status"] == "pending"
     assert "id" in data
+
+
+def _make_docx_bytes(paragraphs: list[str]) -> bytes:
+    body = "".join(
+        f"<w:p><w:r><w:t>{paragraph}</w:t></w:r></w:p>"
+        for paragraph in paragraphs
+    )
+    document = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f"<w:body>{body}</w:body>"
+        "</w:document>"
+    )
+    output = BytesIO()
+    with ZipFile(output, "w") as archive:
+        archive.writestr("word/document.xml", document)
+    return output.getvalue()
+
+
+@pytest.mark.asyncio
+async def test_upload_resume_txt(client):
+    response = await client.post(
+        "/api/resumes/upload",
+        files={"file": ("resume.txt", "张三，AI 应用开发工程师".encode("utf-8"), "text/plain")},
+        data={"title": "文本简历"},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["title"] == "文本简历"
+    assert data["source_type"] == "txt"
+    assert "AI 应用开发工程师" in data["raw_text"]
+
+
+@pytest.mark.asyncio
+async def test_upload_resume_docx(client):
+    response = await client.post(
+        "/api/resumes/upload",
+        files={
+            "file": (
+                "resume.docx",
+                _make_docx_bytes(["张三", "LangGraph Agent 项目经验"]),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["title"] == "resume"
+    assert data["source_type"] == "docx"
+    assert "张三" in data["raw_text"]
+    assert "LangGraph Agent 项目经验" in data["raw_text"]
+
+
+@pytest.mark.asyncio
+async def test_upload_resume_unsupported_file(client):
+    response = await client.post(
+        "/api/resumes/upload",
+        files={"file": ("resume.pdf", b"%PDF-not-really", "application/pdf")},
+    )
+    assert response.status_code == 415
+    assert "支持" in response.json()["detail"]
 
 
 @pytest.mark.asyncio

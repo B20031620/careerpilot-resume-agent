@@ -141,7 +141,7 @@ cd frontend && npm run dev
 - 工作台展示真实数据统计（简历数、岗位数、报告数）
 - 设置页可查看模型配置状态和测试连接
 - 运行 `cd frontend && npm run build` 验证前端编译
-- 运行 `cd backend && USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（39 个）
+- 运行 `cd backend && DEEPSEEK_API_KEY= USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（42 个）
 
 ## 后端 API
 
@@ -158,6 +158,7 @@ cd frontend && npm run dev
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | POST | `/api/resumes` | 创建简历 |
+| POST | `/api/resumes/upload` | 上传并解析简历文件（支持 DOCX、DOC、TXT、MD 等） |
 | GET | `/api/resumes` | 获取简历列表 |
 | GET | `/api/resumes/{resume_id}` | 获取简历详情 |
 | DELETE | `/api/resumes/{resume_id}` | 删除简历（软删除） |
@@ -273,7 +274,7 @@ careerpilot-resume-agent/
       agents/         # LangGraph Agent (resume_match + mock_interview)
       prompts/        # Prompt YAML 模板 (resume_parse, jd_analysis, resume_match)
       services/llm/   # LLM Provider 抽象层 (含同步 chat_sync 方法)
-      tests/          # 测试 (39 个，含面试/真实 LLM 路径 mock 测试)
+      tests/          # 测试 (42 个，含文件上传/面试/真实 LLM 路径 mock 测试)
     data/             # SQLite 数据库文件 (gitignored)
   sample_data/        # 示例数据 (简历 + JD)
   docs/               # 项目文档

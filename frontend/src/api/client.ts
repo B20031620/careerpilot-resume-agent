@@ -41,6 +41,22 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return res.json()
 }
 
+export async function apiPostForm<T>(path: string, body: FormData): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    body,
+  })
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`
+    try {
+      const body = await res.json()
+      if (body.detail) detail = body.detail
+    } catch {}
+    throw new ApiError(res.status, detail)
+  }
+  return res.json()
+}
+
 export async function apiDelete(path: string): Promise<void> {
   const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE' })
   if (!res.ok) {
