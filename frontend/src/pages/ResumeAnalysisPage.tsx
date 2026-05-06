@@ -1,20 +1,61 @@
-import { useState } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
 import { ApiError } from '../api/client'
 import { createResume, type ResumeRead } from '../api/resumes'
 
 export default function ResumeAnalysisPage() {
   const [title, setTitle] = useState('')
   const [rawText, setRawText] = useState('')
+  const [selectedFileName, setSelectedFileName] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ResumeRead | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handlePickFile = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setError(null)
+    const fileName = file.name
+    const supportedTextFile = /\.(txt|md|markdown|csv|json|log)$/i.test(fileName) || file.type.startsWith('text/')
+    if (!supportedTextFile) {
+      setError('当前演示版支持读取 .txt、.md、.csv、.json 等文本文件；PDF 或 Word 请先复制正文粘贴。')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError('文件过大，请选择 2MB 以内的文本简历，或复制核心内容粘贴。')
+      event.target.value = ''
+      return
+    }
+
+    try {
+      const text = await file.text()
+      setRawText(text)
+      setSelectedFileName(fileName)
+      if (!title.trim()) {
+        setTitle(fileName.replace(/\.[^.]+$/, ''))
+      }
+    } catch {
+      setError('读取文件失败，请重新选择文件或直接粘贴文本。')
+    }
+  }
 
   const handleSubmit = async () => {
     if (!title.trim()) return
     setLoading(true)
     setError(null)
     try {
-      const resume = await createResume({ title: title.trim(), raw_text: rawText, source_type: 'text' })
+      const resume = await createResume({
+        title: title.trim(),
+        raw_text: rawText,
+        source_type: selectedFileName ? 'file' : 'text',
+      })
       setResult(resume)
     } catch (e) {
       if (e instanceof ApiError) {
@@ -45,14 +86,45 @@ export default function ResumeAnalysisPage() {
               </span>
             </div>
 
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,.md,.markdown,.csv,.json,.log,text/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+
             <div className="flex border-b border-border-subtle mb-4">
-              <button className="px-4 py-2 font-body-md text-text-secondary hover:text-primary transition-colors">
+              <button
+                type="button"
+                onClick={handlePickFile}
+                className="px-4 py-2 font-body-md text-text-secondary hover:text-primary transition-colors flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[18px]">upload_file</span>
                 文件上传
               </button>
               <button className="px-4 py-2 font-body-md text-primary border-b-2 border-primary font-medium">
                 文本粘贴
               </button>
             </div>
+            {selectedFileName && (
+              <div className="mb-4 flex items-center justify-between rounded-lg border border-agent-accent/20 bg-agent-running/20 px-3 py-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="material-symbols-outlined text-[18px] text-agent-accent">description</span>
+                  <p className="font-body-sm text-text-primary truncate">{selectedFileName}</p>
+                </div>
+                <button
+                  type="button"
+                  className="font-body-sm text-on-surface-variant hover:text-primary"
+                  onClick={() => {
+                    setSelectedFileName('')
+                    if (fileInputRef.current) fileInputRef.current.value = ''
+                  }}
+                >
+                  清除文件
+                </button>
+              </div>
+            )}
 
             <div className="mb-3">
               <label className="block font-body-md text-text-primary font-medium mb-1">简历标题</label>
@@ -66,9 +138,12 @@ export default function ResumeAnalysisPage() {
 
             <textarea
               className="w-full flex-1 min-h-[200px] border border-border-subtle rounded-lg p-3 font-body-md text-text-primary bg-surface resize-none focus:outline-none focus:border-agent-accent mb-4"
-              placeholder="请粘贴简历原文..."
+              placeholder="请粘贴简历原文，或点击「文件上传」读取文本文件..."
               value={rawText}
-              onChange={(e) => setRawText(e.target.value)}
+              onChange={(e) => {
+                setRawText(e.target.value)
+                if (!e.target.value.trim()) setSelectedFileName('')
+              }}
             />
 
             {error && (
