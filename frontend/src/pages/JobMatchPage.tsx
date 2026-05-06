@@ -1,4 +1,43 @@
+import { useState, useEffect } from 'react'
+import { ApiError } from '../api/client'
+import { listResumes, type ResumeListItem } from '../api/resumes'
+import { createJob } from '../api/jobs'
+import { createMatch, type MatchReportDetail } from '../api/matches'
+
 export default function JobMatchPage() {
+  const [resumes, setResumes] = useState<ResumeListItem[]>([])
+  const [selectedResumeId, setSelectedResumeId] = useState('')
+  const [jdTitle, setJdTitle] = useState('')
+  const [jdCompany, setJdCompany] = useState('')
+  const [jdText, setJdText] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [report, setReport] = useState<MatchReportDetail | null>(null)
+
+  useEffect(() => {
+    listResumes().then(setResumes).catch(() => {})
+  }, [])
+
+  const handleMatch = async () => {
+    if (!selectedResumeId || !jdTitle.trim() || !jdText.trim()) return
+    setLoading(true)
+    setError(null)
+    setReport(null)
+    try {
+      const job = await createJob({ title: jdTitle.trim(), company_name: jdCompany.trim() || undefined, raw_text: jdText })
+      const matchResult = await createMatch({ resume_id: selectedResumeId, job_id: job.id })
+      setReport(matchResult)
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setError(e.detail)
+      } else {
+        setError('匹配分析失败，请检查后端服务是否启动')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="max-w-container-max-width mx-auto w-full">
       <header className="mb-6">
@@ -11,113 +50,155 @@ export default function JobMatchPage() {
         <div className="w-full lg:w-5/12 flex flex-col gap-stack-gap">
           <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
             <h3 className="font-h3 text-h3 font-semibold text-text-primary mb-4">已选简历</h3>
-            <div className="flex items-center gap-3 p-3 border border-border-subtle rounded-lg bg-surface-muted mb-6">
-              <span className="material-symbols-outlined text-secondary">description</span>
-              <div>
-                <p className="font-body-md text-text-primary">个人简历_v3_优化版.pdf</p>
-                <p className="font-body-sm text-text-secondary">综合评分 82/100</p>
-              </div>
-            </div>
+            {resumes.length === 0 ? (
+              <p className="font-body-sm text-on-surface-variant mb-4">暂无简历，请先在「简历分析」页面创建</p>
+            ) : (
+              <select
+                className="w-full px-3 py-2 border border-border-subtle rounded-lg font-body-md text-text-primary bg-surface focus:outline-none focus:border-agent-accent mb-4"
+                value={selectedResumeId}
+                onChange={(e) => setSelectedResumeId(e.target.value)}
+              >
+                <option value="">-- 请选择简历 --</option>
+                {resumes.map((r) => (
+                  <option key={r.id} value={r.id}>{r.title}</option>
+                ))}
+              </select>
+            )}
 
-            <h3 className="font-h3 text-h3 font-semibold text-text-primary mb-4">目标岗位 JD</h3>
+            <h3 className="font-h3 text-h3 font-semibold text-text-primary mb-3">目标岗位 JD</h3>
+            <input
+              className="w-full px-3 py-2 border border-border-subtle rounded-lg font-body-md text-text-primary bg-surface focus:outline-none focus:border-agent-accent mb-3"
+              placeholder="岗位名称，例如：高级AI工程师"
+              value={jdTitle}
+              onChange={(e) => setJdTitle(e.target.value)}
+            />
+            <input
+              className="w-full px-3 py-2 border border-border-subtle rounded-lg font-body-md text-text-primary bg-surface focus:outline-none focus:border-agent-accent mb-3"
+              placeholder="公司名称（可选）"
+              value={jdCompany}
+              onChange={(e) => setJdCompany(e.target.value)}
+            />
             <textarea
               className="w-full h-48 border border-border-subtle rounded-lg p-3 font-body-md text-text-primary bg-surface resize-none focus:outline-none focus:border-agent-accent"
               placeholder="请粘贴目标岗位的职位描述（JD）..."
+              value={jdText}
+              onChange={(e) => setJdText(e.target.value)}
             />
-            <button className="w-full mt-4 bg-primary text-on-primary font-body-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors">
-              <span className="material-symbols-outlined text-sm">target</span>
-              开始深度匹配
+
+            {error && (
+              <div className="mt-3 p-3 bg-risk-high/10 border border-risk-high/30 rounded-lg">
+                <p className="font-body-md text-risk-high">{error}</p>
+              </div>
+            )}
+
+            <button
+              onClick={handleMatch}
+              disabled={loading || !selectedResumeId || !jdTitle.trim() || !jdText.trim()}
+              className="w-full mt-4 bg-primary text-on-primary font-body-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-sm">{loading ? 'hourglass_top' : 'target'}</span>
+              {loading ? '正在分析...' : '开始深度匹配'}
             </button>
+            <p className="font-body-sm text-on-surface-variant mt-2 text-center">
+              提示：请使用 USE_MOCK_LLM=true 启动后端以在本地演示匹配
+            </p>
           </div>
         </div>
 
         {/* Right: Report */}
         <div className="w-full lg:w-7/12 flex flex-col gap-stack-gap">
-          {/* Score Card */}
-          <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
-            <div className="flex items-center gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-24 h-24 rounded-full border-4 border-agent-accent flex items-center justify-center">
-                  <div className="text-center">
-                    <span className="font-h1 text-h1 text-primary font-bold">82</span>
-                    <p className="font-body-sm text-text-secondary">匹配度</p>
+          {report ? (
+            <>
+              {/* Score Card */}
+              <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
+                <div className="flex items-center gap-6">
+                  <div className="flex-shrink-0">
+                    <div className="w-24 h-24 rounded-full border-4 border-agent-accent flex items-center justify-center">
+                      <div className="text-center">
+                        <span className="font-h1 text-h1 text-primary font-bold">{report.overall_score}</span>
+                        <p className="font-body-sm text-text-secondary">匹配度</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-h3 text-h3 text-primary mb-1">
+                      匹配度{report.overall_score >= 80 ? '良好' : report.overall_score >= 60 ? '中等' : '偏低'}，{report.overall_score >= 80 ? '具备核心竞争力' : '有提升空间'}
+                    </h3>
+                    <p className="font-body-md text-text-secondary">报告 ID: {report.report_id}</p>
                   </div>
                 </div>
               </div>
-              <div>
-                <h3 className="font-h3 text-h3 text-primary mb-1">匹配度良好，具备核心竞争力</h3>
-                <p className="font-body-md text-text-secondary">AI 综合评估了技能、经验和项目三个维度，整体匹配度较高。</p>
-              </div>
-            </div>
-          </div>
 
-          {/* Score Breakdown */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { label: '技能匹配', score: 85, color: 'bg-risk-low' },
-              { label: '经验匹配', score: 78, color: 'bg-risk-medium' },
-              { label: '项目匹配', score: 82, color: 'bg-risk-low' },
-            ].map((item) => (
-              <div key={item.label} className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
-                <p className="font-body-sm text-text-secondary mb-2">{item.label}</p>
-                <span className="font-h2 text-h2 text-primary">{item.score}%</span>
-                <div className="mt-3 h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                  <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.score}%` }} />
+              {/* Score Breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {[
+                  { label: '技能匹配', score: report.skill_score },
+                  { label: '项目匹配', score: report.project_score },
+                  { label: '经验匹配', score: report.experience_score },
+                  { label: '表达质量', score: report.expression_score },
+                ].map((item) => (
+                  <div key={item.label} className="bg-surface-container-lowest border border-border-subtle rounded-xl p-4 shadow-sm">
+                    <p className="font-body-sm text-text-secondary mb-1">{item.label}</p>
+                    <span className="font-h2 text-h2 text-primary">{item.score}</span>
+                    <div className="mt-2 h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${item.score >= 80 ? 'bg-risk-low' : item.score >= 60 ? 'bg-risk-medium' : 'bg-risk-high'}`}
+                        style={{ width: `${item.score}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Strengths & Weaknesses */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
+                  <h3 className="font-h3 text-h3 text-primary mb-3">核心优势</h3>
+                  <ul className="space-y-2">
+                    {report.strengths.map((s, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="material-symbols-outlined text-risk-low text-[16px] mt-0.5">check_circle</span>
+                        <span className="font-body-md text-text-primary">{s.title || s.evidence}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
+                  <h3 className="font-h3 text-h3 text-primary mb-3">关键差距</h3>
+                  <ul className="space-y-2">
+                    {report.weaknesses.map((w, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="material-symbols-outlined text-risk-high text-[16px] mt-0.5">error</span>
+                        <span className="font-body-md text-text-primary">{w.title || w.reason}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Strengths & Weaknesses */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
-              <h3 className="font-h3 text-h3 text-primary mb-3">核心优势</h3>
-              <ul className="space-y-2">
-                {['技术栈高度匹配', '项目经验丰富', '有 AI Agent 开发经验'].map((s) => (
-                  <li key={s} className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-risk-low text-[16px] mt-0.5">check_circle</span>
-                    <span className="font-body-md text-text-primary">{s}</span>
-                  </li>
-                ))}
-              </ul>
+              {/* Missing Keywords */}
+              {report.missing_keywords.length > 0 && (
+                <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
+                  <h3 className="font-h3 text-h3 text-primary mb-3">缺失关键词侦测</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {report.missing_keywords.map((kw) => (
+                      <span key={kw} className="inline-flex items-center gap-1 px-2.5 py-1 bg-risk-medium/10 text-risk-medium rounded font-body-sm">
+                        <span className="material-symbols-outlined text-[14px]">warning</span>
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <span className="material-symbols-outlined text-5xl text-on-primary-container mb-3">target</span>
+                <p className="font-body-md text-text-secondary">选择简历并输入 JD 后，匹配报告将在此处展示</p>
+              </div>
             </div>
-            <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
-              <h3 className="font-h3 text-h3 text-primary mb-3">关键差距</h3>
-              <ul className="space-y-2">
-                {['缺少大规模系统设计经验', '团队管理经验不足', '缺少量化成果数据'].map((s) => (
-                  <li key={s} className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-risk-high text-[16px] mt-0.5">error</span>
-                    <span className="font-body-md text-text-primary">{s}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Missing Keywords */}
-          <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
-            <h3 className="font-h3 text-h3 text-primary mb-3">缺失关键词侦测</h3>
-            <div className="flex flex-wrap gap-2">
-              {['微服务架构', 'Kubernetes', '技术方案评审', '跨团队协作', 'OKR'].map((kw) => (
-                <span key={kw} className="inline-flex items-center gap-1 px-2.5 py-1 bg-risk-medium/10 text-risk-medium rounded font-body-sm">
-                  <span className="material-symbols-outlined text-[14px]">warning</span>
-                  {kw}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            <button className="px-5 py-2.5 bg-secondary text-on-secondary rounded-lg font-status text-status flex items-center gap-2 hover:bg-on-secondary-fixed-variant transition-colors">
-              <span className="material-symbols-outlined text-[16px]">edit_note</span>
-              基于此报告润色简历
-            </button>
-            <button className="px-5 py-2.5 bg-surface-container-lowest border border-border-subtle rounded-lg font-status text-status text-text-primary flex items-center gap-2 hover:bg-surface-container-low transition-colors">
-              <span className="material-symbols-outlined text-[16px]">record_voice_over</span>
-              开始岗位模拟面试
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -48,11 +48,44 @@ npm run dev
 
 前端默认运行在 http://localhost:5173，已配置代理将 `/api` 请求转发到后端。
 
-### 4. 验证
+### 4. 前后端联调流程
+
+前后端已完整联调，前端页面通过 API 客户端调用后端接口：
+
+1. **简历分析页** → `POST /api/resumes` 创建简历，展示解析结果
+2. **岗位匹配页** → `GET /api/resumes` 选择简历 + 输入 JD → `POST /api/jobs` 创建岗位 → `POST /api/matches` 生成匹配报告
+3. **简历润色页** → `GET /api/resumes` + `GET /api/jobs` 选择简历和岗位 → `POST /api/matches` 生成润色建议
+4. **历史报告页** → `GET /api/reports` 列表 → `GET /api/matches/{id}` 查看详情 → `DELETE /api/reports/{id}` 删除
+5. **设置页** → `GET /api/settings/model-status` 查看配置 + `POST /api/settings/test-model-connection` 测试连接
+
+### 5. 使用 Mock 模式本地演示
+
+无需 DeepSeek API Key 即可体验完整匹配分析流程：
+
+```bash
+# 启动后端（使用 Mock LLM）
+cd backend
+source .venv/bin/activate
+USE_MOCK_LLM=true uvicorn app.main:app --reload
+
+# 另一个终端启动前端
+cd frontend
+npm run dev
+```
+
+打开 http://localhost:5173 后：
+1. 在「简历分析」页创建一份简历
+2. 在「岗位匹配」页选择简历并输入 JD，点击「开始深度匹配」
+3. 系统将返回 Mock 匹配报告（包含评分、优势、差距、缺失关键词、润色建议）
+4. 报告自动保存，可在「历史报告」页查看
+
+### 6. 验证
 
 - 打开 http://localhost:5173 可以看到中文页面
 - 左侧导航可切换工作台、简历分析、岗位匹配等 8 个核心页面
 - 设置页可查看模型配置状态和测试连接
+- 运行 `cd frontend && npm run build` 验证前端编译
+- 运行 `cd backend && USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（27 个）
 
 ## 后端 API
 

@@ -1,4 +1,32 @@
+import { useState } from 'react'
+import { ApiError } from '../api/client'
+import { createResume, type ResumeRead } from '../api/resumes'
+
 export default function ResumeAnalysisPage() {
+  const [title, setTitle] = useState('')
+  const [rawText, setRawText] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<ResumeRead | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = async () => {
+    if (!title.trim()) return
+    setLoading(true)
+    setError(null)
+    try {
+      const resume = await createResume({ title: title.trim(), raw_text: rawText, source_type: 'text' })
+      setResult(resume)
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setError(e.detail)
+      } else {
+        setError('创建简历失败，请检查后端服务是否启动')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="max-w-container-max-width mx-auto w-full">
       <header className="mb-6">
@@ -18,134 +46,100 @@ export default function ResumeAnalysisPage() {
             </div>
 
             <div className="flex border-b border-border-subtle mb-4">
-              <button className="px-4 py-2 font-body-md text-primary border-b-2 border-primary font-medium">
+              <button className="px-4 py-2 font-body-md text-text-secondary hover:text-primary transition-colors">
                 文件上传
               </button>
-              <button className="px-4 py-2 font-body-md text-text-secondary hover:text-primary transition-colors">
+              <button className="px-4 py-2 font-body-md text-primary border-b-2 border-primary font-medium">
                 文本粘贴
               </button>
             </div>
 
-            <div className="flex-1 border-2 border-dashed border-border-subtle rounded-lg bg-surface flex flex-col items-center justify-center p-8 text-center hover:bg-surface-container-low transition-colors cursor-pointer group mb-4">
-              <span className="material-symbols-outlined text-4xl text-on-primary-container mb-3 group-hover:text-primary transition-colors">
-                cloud_upload
-              </span>
-              <p className="font-body-md text-text-primary font-medium">点击或拖拽文件至此处</p>
-              <p className="font-body-sm text-text-secondary mt-1">支持 PDF, DOCX, TXT 格式，最大 10MB</p>
+            <div className="mb-3">
+              <label className="block font-body-md text-text-primary font-medium mb-1">简历标题</label>
+              <input
+                className="w-full px-3 py-2 border border-border-subtle rounded-lg font-body-md text-text-primary bg-surface focus:outline-none focus:border-agent-accent"
+                placeholder="例如：前端工程师_张三"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
             </div>
 
-            <div className="flex items-center gap-4 mb-4">
-              <div className="h-px bg-border-subtle flex-1" />
-              <span className="font-body-sm text-text-secondary">最近解析</span>
-              <div className="h-px bg-border-subtle flex-1" />
-            </div>
+            <textarea
+              className="w-full flex-1 min-h-[200px] border border-border-subtle rounded-lg p-3 font-body-md text-text-primary bg-surface resize-none focus:outline-none focus:border-agent-accent mb-4"
+              placeholder="请粘贴简历原文..."
+              value={rawText}
+              onChange={(e) => setRawText(e.target.value)}
+            />
 
-            <div className="flex items-center justify-between p-3 border border-border-subtle rounded-lg bg-surface-muted mb-6">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-secondary">description</span>
-                <div>
-                  <p className="font-body-md text-text-primary">前端工程师_张三.pdf</p>
-                  <p className="font-body-sm text-text-secondary">今天 10:24 &bull; 1.2MB</p>
-                </div>
+            {error && (
+              <div className="mb-4 p-3 bg-risk-high/10 border border-risk-high/30 rounded-lg">
+                <p className="font-body-md text-risk-high">{error}</p>
               </div>
-              <button className="text-text-secondary hover:text-primary transition-colors">
-                <span className="material-symbols-outlined">more_vert</span>
-              </button>
-            </div>
+            )}
 
-            <button className="w-full bg-primary text-on-primary font-body-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors mt-auto">
-              <span className="material-symbols-outlined text-sm">psychology</span>
-              开始深度解析
+            <button
+              onClick={handleSubmit}
+              disabled={loading || !title.trim()}
+              className="w-full bg-primary text-on-primary font-body-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors mt-auto disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-sm">{loading ? 'hourglass_top' : 'psychology'}</span>
+              {loading ? '正在创建...' : '开始深度解析'}
             </button>
           </div>
         </div>
 
         {/* Right: Results */}
         <div className="w-full lg:w-7/12 flex flex-col gap-stack-gap">
-          {/* Status Bar */}
-          <div className="bg-agent-running/30 border border-agent-accent/20 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-agent-accent/20 flex items-center justify-center text-agent-accent">
-                <span className="material-symbols-outlined text-lg">check</span>
-              </div>
-              <div>
-                <p className="font-body-md text-text-primary font-medium">解析完成</p>
-                <p className="font-body-sm text-text-secondary">AI 已提取并结构化 6 个核心模块</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 bg-surface-container-lowest border border-border-subtle rounded-lg font-body-sm text-text-primary hover:bg-surface-container-low transition-colors flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">target</span>
-                岗位匹配
-              </button>
-              <button className="px-4 py-2 bg-secondary text-on-secondary rounded-lg font-body-sm flex items-center gap-1 hover:bg-on-secondary-fixed-variant transition-colors">
-                <span className="material-symbols-outlined text-[16px]">edit_note</span>
-                去润色
-              </button>
-            </div>
-          </div>
-
-          {/* Risk Alerts */}
-          <div className="bg-surface-container-lowest border border-risk-medium/30 rounded-xl p-panel-padding shadow-sm relative overflow-hidden">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-risk-medium" />
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-risk-medium mt-0.5">warning</span>
-              <div>
-                <h3 className="font-h3 text-h3 font-semibold text-text-primary mb-2">AI 洞察：简历风险与缺失</h3>
-                <ul className="space-y-3 mt-3">
-                  <li className="flex items-start gap-2 bg-surface p-3 rounded border border-border-subtle">
-                    <span className="material-symbols-outlined text-risk-high text-[18px] mt-0.5">error</span>
-                    <div>
-                      <p className="font-body-md text-text-primary font-medium">项目经历缺少个人职责描述</p>
-                      <p className="font-body-sm text-text-secondary mt-1">
-                        在"电商后台管理系统"项目中，仅描述了系统功能，未说明您的具体贡献。建议补充。
-                      </p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-2 bg-surface p-3 rounded border border-border-subtle">
-                    <span className="material-symbols-outlined text-risk-medium text-[18px] mt-0.5">help</span>
-                    <div>
-                      <p className="font-body-md text-text-primary font-medium">技能印证断裂</p>
-                      <p className="font-body-sm text-text-secondary mt-1">
-                        技能栈中声明了熟练使用
-                        LangChain，但下方任何一段工作/项目经历中都没有提到使用该技术的证据。
-                      </p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Structured Data Grid */}
-          <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm flex-1">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-h3 text-h3 font-semibold text-text-primary">结构化知识图谱</h3>
-              <span className="font-label-caps text-label-caps text-text-secondary uppercase tracking-wider">
-                AI 解析结果预览
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { icon: 'person', label: '基本信息', status: 'check_circle', statusColor: 'text-risk-low', desc: '完整度 100%', detail: '已识别：姓名、联系方式、求职意向等 5 项核心字段。' },
-                { icon: 'code', label: '技能栈', status: 'info', statusColor: 'text-risk-medium', desc: '需印证', detail: '已识别 12 项技术标签。存在 2 项未在经历中体现的悬空技能。' },
-                { icon: 'work', label: '工作经历', status: 'error', statusColor: 'text-risk-high', desc: '量化成果：缺失', detail: '包含 2 段经历。缺少关键的业务数据指标支持。' },
-                { icon: 'school', label: '教育经历', status: 'check_circle', statusColor: 'text-risk-low', desc: '完整度 100%', detail: '识别到本科学历，计算机科学与技术专业，毕业时间逻辑合理。' },
-              ].map((item) => (
-                <div key={item.label} className="border border-border-subtle rounded-lg p-4 bg-surface hover:border-outline-variant transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-text-primary">
-                      <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
-                      <span className="font-body-md font-medium">{item.label}</span>
-                    </div>
-                    <span className={`material-symbols-outlined text-[16px] ${item.statusColor}`}>{item.status}</span>
+          {result ? (
+            <>
+              {/* Status Bar */}
+              <div className="bg-agent-running/30 border border-agent-accent/20 rounded-xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-agent-accent/20 flex items-center justify-center text-agent-accent">
+                    <span className="material-symbols-outlined text-lg">check</span>
                   </div>
-                  <p className="font-body-sm text-text-secondary">{item.desc}</p>
-                  <p className="font-body-sm text-text-primary mt-2">{item.detail}</p>
+                  <div>
+                    <p className="font-body-md text-text-primary font-medium">简历已创建</p>
+                    <p className="font-body-sm text-text-secondary">ID: {result.id}</p>
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Structured Data Grid */}
+              <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm flex-1">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-h3 text-h3 font-semibold text-text-primary">简历信息</h3>
+                  <span className="font-label-caps text-label-caps text-text-secondary uppercase tracking-wider">
+                    解析状态: {result.parse_status}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { icon: 'title', label: '标题', value: result.title },
+                    { icon: 'category', label: '来源类型', value: result.source_type },
+                    { icon: 'text_snippet', label: '原文长度', value: `${result.raw_text.length} 字` },
+                    { icon: 'schedule', label: '创建时间', value: new Date(result.created_at).toLocaleString('zh-CN') },
+                  ].map((item) => (
+                    <div key={item.label} className="border border-border-subtle rounded-lg p-4 bg-surface hover:border-outline-variant transition-colors">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="material-symbols-outlined text-[18px] text-on-primary-container">{item.icon}</span>
+                        <span className="font-body-md font-medium text-text-primary">{item.label}</span>
+                      </div>
+                      <p className="font-body-sm text-text-secondary">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <span className="material-symbols-outlined text-5xl text-on-primary-container mb-3">description</span>
+                <p className="font-body-md text-text-secondary">输入简历标题和原文后点击「开始深度解析」</p>
+                <p className="font-body-sm text-on-surface-variant mt-2">解析结果将在此处展示</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,10 +1,50 @@
+import { useState, useEffect } from 'react'
+import { listReports, deleteReport, type ReportListItem } from '../api/reports'
+import { getMatch, type MatchReportDetail } from '../api/matches'
+
 export default function ReportsPage() {
-  const reports = [
-    { id: '1', name: '个人简历_v3_匹配分析', type: '岗位匹配', score: 82, date: '2024-01-15', status: '完成' },
-    { id: '2', name: '腾讯产品总监_JD分析', type: '简历分析', score: 75, date: '2024-01-14', status: '完成' },
-    { id: '3', name: '字节跳动-一面模拟', type: '面试报告', score: 76, date: '2024-01-12', status: '完成' },
-    { id: '4', name: '薪资谈判沟通建议', type: '沟通建议', score: null, date: '2024-01-10', status: '完成' },
-  ]
+  const [reports, setReports] = useState<ReportListItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<MatchReportDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  useEffect(() => {
+    loadReports()
+  }, [])
+
+  const loadReports = async () => {
+    setLoading(true)
+    try {
+      const data = await listReports()
+      setReports(data)
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleView = async (reportId: string) => {
+    setDetailLoading(true)
+    try {
+      const detail = await getMatch(reportId)
+      setSelected(detail)
+    } catch {
+      // ignore
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  const handleDelete = async (reportId: string) => {
+    try {
+      await deleteReport(reportId)
+      setReports((prev) => prev.filter((r) => r.id !== reportId))
+      if (selected?.report_id === reportId) setSelected(null)
+    } catch {
+      // ignore
+    }
+  }
 
   return (
     <div className="max-w-container-max-width mx-auto w-full">
@@ -18,59 +58,55 @@ export default function ReportsPage() {
         <div className="w-full lg:w-7/12">
           <div className="bg-surface-container-lowest border border-border-subtle rounded-xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-border-subtle bg-surface-muted">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-h3 text-h3 text-primary">报告列表</h3>
-                <button className="text-on-surface-variant hover:text-primary font-status text-status">批量删除</button>
+              <h3 className="font-h3 text-h3 text-primary">报告列表</h3>
+            </div>
+            {loading ? (
+              <div className="p-8 text-center">
+                <span className="material-symbols-outlined animate-spin text-agent-accent text-2xl">progress_activity</span>
+                <p className="font-body-md text-on-surface-variant mt-2">加载中...</p>
               </div>
-              <input
-                className="w-full px-3 py-2 border border-border-subtle rounded-lg font-body-md text-text-primary bg-surface focus:outline-none focus:border-agent-accent"
-                placeholder="搜索报告名称、岗位..."
-              />
-            </div>
-            <div className="flex border-b border-border-subtle px-5">
-              {['全部', '简历分析', '岗位匹配', '面试报告', '沟通建议'].map((tab, i) => (
-                <button
-                  key={tab}
-                  className={`px-4 py-3 font-body-md ${i === 0 ? 'text-primary border-b-2 border-primary font-medium' : 'text-on-surface-variant hover:text-primary transition-colors'}`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border-subtle text-on-surface-variant font-label-caps text-label-caps bg-surface-muted/50">
-                  <th className="px-5 py-3 font-medium">报告信息</th>
-                  <th className="px-5 py-3 font-medium">AI 评分/状态</th>
-                  <th className="px-5 py-3 font-medium">生成日期</th>
-                  <th className="px-5 py-3 font-medium text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody className="font-body-sm text-body-sm text-on-surface">
-                {reports.map((r) => (
-                  <tr key={r.id} className="border-b border-border-subtle hover:bg-surface-muted transition-colors cursor-pointer">
-                    <td className="px-5 py-4">
-                      <p className="font-medium text-primary">{r.name}</p>
-                      <p className="text-on-surface-variant mt-0.5">{r.type}</p>
-                    </td>
-                    <td className="px-5 py-4">
-                      {r.score ? (
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2 h-2 rounded-full ${r.score >= 80 ? 'bg-risk-low' : r.score >= 60 ? 'bg-risk-medium' : 'bg-risk-high'}`} />
-                          <span>{r.score}分</span>
-                        </div>
-                      ) : (
-                        <span className="text-on-surface-variant">{r.status}</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-on-surface-variant">{r.date}</td>
-                    <td className="px-5 py-4 text-right">
-                      <button className="text-agent-accent hover:text-primary transition-colors font-status">查看</button>
-                    </td>
+            ) : reports.length === 0 ? (
+              <div className="p-8 text-center">
+                <span className="material-symbols-outlined text-4xl text-on-primary-container mb-3">folder_open</span>
+                <p className="font-body-md text-on-surface-variant">暂无报告</p>
+                <p className="font-body-sm text-on-surface-variant mt-1">完成匹配分析后，报告将自动保存在此处</p>
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border-subtle text-on-surface-variant font-label-caps text-label-caps bg-surface-muted/50">
+                    <th className="px-5 py-3 font-medium">报告信息</th>
+                    <th className="px-5 py-3 font-medium">AI 评分</th>
+                    <th className="px-5 py-3 font-medium">生成日期</th>
+                    <th className="px-5 py-3 font-medium text-right">操作</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="font-body-sm text-body-sm text-on-surface">
+                  {reports.map((r) => (
+                    <tr key={r.id} className="border-b border-border-subtle hover:bg-surface-muted transition-colors">
+                      <td className="px-5 py-4">
+                        <p className="font-medium text-primary">{r.report_type === 'match' ? '匹配分析' : r.report_type}</p>
+                      </td>
+                      <td className="px-5 py-4">
+                        {r.overall_score != null ? (
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${r.overall_score >= 80 ? 'bg-risk-low' : r.overall_score >= 60 ? 'bg-risk-medium' : 'bg-risk-high'}`} />
+                            <span>{r.overall_score}分</span>
+                          </div>
+                        ) : (
+                          <span className="text-on-surface-variant">--</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-on-surface-variant">{new Date(r.created_at).toLocaleDateString('zh-CN')}</td>
+                      <td className="px-5 py-4 text-right flex gap-2 justify-end">
+                        <button onClick={() => handleView(r.id)} className="text-agent-accent hover:text-primary transition-colors font-status">查看</button>
+                        <button onClick={() => handleDelete(r.id)} className="text-on-surface-variant hover:text-risk-high transition-colors font-status">删除</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
@@ -78,53 +114,66 @@ export default function ReportsPage() {
         <div className="w-full lg:w-5/12">
           <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
             <h3 className="font-h3 text-h3 font-semibold text-text-primary mb-4">报告摘要</h3>
-            <p className="font-body-sm text-on-surface-variant mb-6">选择左侧报告查看详情</p>
-
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-h3 text-h3 text-primary mb-3">整体评价</h4>
-                <p className="font-body-md text-text-secondary">
-                  综合分析显示，候选人在技术能力和项目经验方面表现良好，但在量化成果展示和系统设计经验方面存在提升空间。
-                </p>
+            {detailLoading ? (
+              <div className="text-center py-8">
+                <span className="material-symbols-outlined animate-spin text-agent-accent text-2xl">progress_activity</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            ) : selected ? (
+              <div className="space-y-6">
                 <div>
-                  <h4 className="font-body-md text-risk-low font-medium mb-2">关键优势</h4>
-                  <ul className="space-y-1">
-                    {['技术栈匹配度高', 'AI 项目经验丰富'].map((s) => (
-                      <li key={s} className="font-body-sm text-text-secondary flex items-center gap-1">
-                        <span className="material-symbols-outlined text-risk-low text-[14px]">check</span>
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
+                  <h4 className="font-h3 text-h3 text-primary mb-3">整体评价</h4>
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="w-16 h-16 rounded-full border-4 border-agent-accent flex items-center justify-center">
+                      <span className="font-h2 text-h2 text-primary font-bold">{selected.overall_score}</span>
+                    </div>
+                    <div>
+                      <p className="font-body-md text-text-primary">综合评分</p>
+                      <p className="font-body-sm text-text-secondary">
+                        技能{selected.skill_score} / 项目{selected.project_score} / 经验{selected.experience_score} / 表达{selected.expression_score}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-body-md text-risk-high font-medium mb-2">主要短板</h4>
-                  <ul className="space-y-1">
-                    {['量化成果缺失', '系统设计经验不足'].map((s) => (
-                      <li key={s} className="font-body-sm text-text-secondary flex items-center gap-1">
-                        <span className="material-symbols-outlined text-risk-high text-[14px]">close</span>
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
 
-              <div className="pt-4 border-t border-border-subtle space-y-3">
-                <h4 className="font-body-md text-primary font-medium">下一步建议</h4>
-                <button className="w-full p-3 rounded-lg border border-border-subtle bg-surface flex items-center gap-3 hover:bg-surface-container-low transition-colors text-left">
-                  <span className="material-symbols-outlined text-agent-accent">edit_note</span>
-                  <span className="font-body-md text-text-primary">使用 AI 润色简历</span>
-                </button>
-                <button className="w-full p-3 rounded-lg border border-border-subtle bg-surface flex items-center gap-3 hover:bg-surface-container-low transition-colors text-left">
-                  <span className="material-symbols-outlined text-agent-accent">record_voice_over</span>
-                  <span className="font-body-md text-text-primary">发起模拟面试</span>
-                </button>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-body-md text-risk-low font-medium mb-2">核心优势</h4>
+                    <ul className="space-y-1">
+                      {selected.strengths.slice(0, 3).map((s, i) => (
+                        <li key={i} className="font-body-sm text-text-secondary flex items-start gap-1">
+                          <span className="material-symbols-outlined text-risk-low text-[14px]">check</span>
+                          {s.title || s.evidence}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-body-md text-risk-high font-medium mb-2">关键差距</h4>
+                    <ul className="space-y-1">
+                      {selected.weaknesses.slice(0, 3).map((w, i) => (
+                        <li key={i} className="font-body-sm text-text-secondary flex items-start gap-1">
+                          <span className="material-symbols-outlined text-risk-high text-[14px]">close</span>
+                          {w.title || w.reason}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {selected.missing_keywords.length > 0 && (
+                  <div>
+                    <h4 className="font-body-md text-risk-medium font-medium mb-2">缺失关键词</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {selected.missing_keywords.map((kw) => (
+                        <span key={kw} className="px-2 py-0.5 bg-risk-medium/10 text-risk-medium rounded text-xs">{kw}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <p className="font-body-sm text-on-surface-variant">点击左侧报告的「查看」按钮查看详情</p>
+            )}
           </div>
         </div>
       </div>
