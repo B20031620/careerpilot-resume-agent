@@ -1,10 +1,29 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes_health import router as health_router
+from app.api.routes_jobs import router as jobs_router
+from app.api.routes_reports import router as reports_router
+from app.api.routes_resumes import router as resumes_router
 from app.api.routes_settings import router as settings_router
+from app.db.base import Base
+from app.db.session import engine
 
-app = FastAPI(title="CareerPilot Resume Agent", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    import app.models.resume  # noqa: F401
+    import app.models.job_description  # noqa: F401
+    import app.models.report  # noqa: F401
+    import app.models.interview  # noqa: F401
+    import app.models.agent_run  # noqa: F401
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
+app = FastAPI(title="CareerPilot Resume Agent", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,3 +35,6 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(settings_router)
+app.include_router(resumes_router)
+app.include_router(jobs_router)
+app.include_router(reports_router)
