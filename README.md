@@ -143,7 +143,7 @@ cd frontend && npm run dev
 - 工作台展示真实数据统计（简历数、岗位数、报告数）
 - 设置页可查看模型配置状态和测试连接
 - 运行 `cd frontend && npm run build` 验证前端编译
-- 运行 `cd backend && DEEPSEEK_API_KEY= USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（47 个）
+- 运行 `cd backend && DEEPSEEK_API_KEY= USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（49 个）
 
 ### 认证
 
@@ -288,7 +288,7 @@ careerpilot-resume-agent/
       agents/         # LangGraph Agent (resume_match + mock_interview)
       prompts/        # Prompt YAML 模板 (resume_parse, jd_analysis, resume_match)
       services/llm/   # LLM Provider 抽象层 (含同步 chat_sync 方法)
-      tests/          # 测试 (47 个，含认证/数据隔离/文件上传/面试/真实 LLM 路径 mock 测试)
+      tests/          # 测试 (49 个，含认证/数据隔离/文件上传幂等/解析/面试/真实 LLM 路径 mock 测试)
     data/             # SQLite 数据库文件 (gitignored)
   sample_data/        # 示例数据 (简历 + JD)
   docs/               # 项目文档

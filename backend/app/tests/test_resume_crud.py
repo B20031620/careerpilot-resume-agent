@@ -1,4 +1,5 @@
 import pytest
+import os
 from io import BytesIO
 from zipfile import ZipFile
 
@@ -50,6 +51,25 @@ async def test_upload_resume_txt(client):
 
 
 @pytest.mark.asyncio
+async def test_upload_resume_is_idempotent_for_same_user_and_content(client):
+    files = {"file": ("resume.txt", "同一份简历内容".encode("utf-8"), "text/plain")}
+    first = await client.post("/api/resumes/upload", files=files, data={"title": "重复简历"})
+    assert first.status_code == 201
+
+    second = await client.post(
+        "/api/resumes/upload",
+        files={"file": ("resume.txt", "同一份简历内容".encode("utf-8"), "text/plain")},
+        data={"title": "重复简历"},
+    )
+    assert second.status_code == 201
+    assert second.json()["id"] == first.json()["id"]
+
+    list_resp = await client.get("/api/resumes")
+    rows = [r for r in list_resp.json() if r["title"] == "重复简历"]
+    assert len(rows) == 1
+
+
+@pytest.mark.asyncio
 async def test_upload_resume_docx(client):
     response = await client.post(
         "/api/resumes/upload",
@@ -67,6 +87,26 @@ async def test_upload_resume_docx(client):
     assert data["source_type"] == "docx"
     assert "张三" in data["raw_text"]
     assert "LangGraph Agent 项目经验" in data["raw_text"]
+
+
+@pytest.mark.asyncio
+async def test_parse_resume_mock_updates_structured_result(client):
+    os.environ["USE_MOCK_LLM"] = "true"
+    try:
+        create = await client.post("/api/resumes", json={
+            "title": "待解析简历",
+            "raw_text": "Python LangGraph FastAPI 项目经验",
+        })
+        resume_id = create.json()["id"]
+
+        response = await client.post(f"/api/resumes/{resume_id}/parse")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["parse_status"] == "succeeded"
+        assert data["structured_json"] is not None
+        assert len(data["structured_json"]["skills"]) > 0
+    finally:
+        os.environ.pop("USE_MOCK_LLM", None)
 
 
 @pytest.mark.asyncio

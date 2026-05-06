@@ -21,6 +21,15 @@ router = APIRouter(prefix="/api/resumes", tags=["resumes"])
 
 @router.post("", response_model=ResumeRead, status_code=201)
 def create_resume(body: ResumeCreate, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    existing = db.query(Resume).filter(
+        Resume.user_id == user_id,
+        Resume.title == body.title,
+        Resume.raw_text == (body.raw_text or ""),
+        Resume.deleted_at.is_(None),
+    ).first()
+    if existing:
+        return existing
+
     resume = Resume(user_id=user_id, **body.model_dump())
     db.add(resume)
     db.commit()
@@ -43,6 +52,14 @@ async def upload_resume(
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     resume_title = title.strip() if title and title.strip() else Path(filename).stem
+    existing = db.query(Resume).filter(
+        Resume.user_id == user_id,
+        Resume.raw_text == raw_text,
+        Resume.deleted_at.is_(None),
+    ).first()
+    if existing:
+        return existing
+
     resume = Resume(
         user_id=user_id,
         title=resume_title or "未命名简历",

@@ -30,6 +30,10 @@ export async function createResume(data: ResumeCreate): Promise<ResumeRead> {
   return apiPost<ResumeRead>('/api/resumes', data)
 }
 
+export async function parseResume(id: string): Promise<ResumeRead> {
+  return apiPost<ResumeRead>(`/api/resumes/${id}/parse`, {})
+}
+
 export async function uploadResumeFile(file: File, title?: string): Promise<ResumeRead> {
   const formData = new FormData()
   formData.append('file', file)

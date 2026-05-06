@@ -1,21 +1,33 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { ApiError } from '../api/client'
-import { createResume, uploadResumeFile, type ResumeRead } from '../api/resumes'
+import { createResume, parseResume, uploadResumeFile, type ResumeRead } from '../api/resumes'
 
 export default function ResumeAnalysisPage() {
   const [title, setTitle] = useState('')
   const [rawText, setRawText] = useState('')
   const [selectedFileName, setSelectedFileName] = useState('')
+  const [loadingLabel, setLoadingLabel] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ResumeRead | null>(null)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const busyRef = useRef(false)
 
   const handlePickFile = () => {
+    if (busyRef.current) return
     fileInputRef.current?.click()
   }
 
+  const runParse = async (resume: ResumeRead) => {
+    setResult(resume)
+    setLoadingLabel('正在进行 AI 结构化解析...')
+    const parsed = await parseResume(resume.id)
+    setResult(parsed)
+    return parsed
+  }
+
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (busyRef.current) return
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -34,29 +46,36 @@ export default function ResumeAnalysisPage() {
       return
     }
 
+    busyRef.current = true
     setLoading(true)
+    setLoadingLabel('正在上传并提取简历文本...')
     setSelectedFileName(fileName)
     try {
       const resume = await uploadResumeFile(file, title.trim() || undefined)
-      setResult(resume)
       setTitle(resume.title)
       setRawText(resume.raw_text)
+      await runParse(resume)
     } catch (e) {
       if (e instanceof ApiError) {
         setError(e.detail)
       } else {
-        setError('上传文件失败，请检查文件格式或后端服务。')
+        setError('上传或解析失败，请检查文件格式、模型配置或后端服务。')
       }
       setSelectedFileName('')
       event.target.value = ''
     } finally {
+      busyRef.current = false
       setLoading(false)
+      setLoadingLabel('')
+      event.target.value = ''
     }
   }
 
   const handleSubmit = async () => {
-    if (!title.trim()) return
+    if (!title.trim() || busyRef.current) return
+    busyRef.current = true
     setLoading(true)
+    setLoadingLabel('正在创建简历记录...')
     setError(null)
     try {
       const resume = await createResume({
@@ -64,17 +83,26 @@ export default function ResumeAnalysisPage() {
         raw_text: rawText,
         source_type: selectedFileName ? 'file' : 'text',
       })
-      setResult(resume)
+      await runParse(resume)
     } catch (e) {
       if (e instanceof ApiError) {
         setError(e.detail)
       } else {
-        setError('创建简历失败，请检查后端服务是否启动')
+        setError('创建或解析简历失败，请检查后端服务是否启动')
       }
     } finally {
+      busyRef.current = false
       setLoading(false)
+      setLoadingLabel('')
     }
   }
+
+  const structured = result?.structured_json ?? null
+  const basicInfo = (structured?.basic_info ?? {}) as Record<string, unknown>
+  const skills = Array.isArray(structured?.skills) ? structured.skills : []
+  const projects = Array.isArray(structured?.projects) ? structured.projects : []
+  const experiences = Array.isArray(structured?.work_experiences) ? structured.work_experiences : []
+  const parseError = result?.parse_warnings?.error ? String(result.parse_warnings.error) : ''
 
   return (
     <div className="max-w-container-max-width mx-auto w-full">
@@ -100,6 +128,7 @@ export default function ResumeAnalysisPage() {
               accept=".docx,.doc,.txt,.md,.markdown,.csv,.json,.log,text/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="hidden"
               onChange={handleFileChange}
+              disabled={loading}
             />
 
             <div className="flex border-b border-border-subtle mb-4">
@@ -124,7 +153,8 @@ export default function ResumeAnalysisPage() {
                 </div>
                 <button
                   type="button"
-                  className="font-body-sm text-on-surface-variant hover:text-primary"
+                  disabled={loading}
+                  className="font-body-sm text-on-surface-variant hover:text-primary disabled:opacity-50"
                   onClick={() => {
                     setSelectedFileName('')
                     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -141,6 +171,7 @@ export default function ResumeAnalysisPage() {
                 className="w-full px-3 py-2 border border-border-subtle rounded-lg font-body-md text-text-primary bg-surface focus:outline-none focus:border-agent-accent"
                 placeholder="例如：前端工程师_张三"
                 value={title}
+                disabled={loading}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
@@ -149,6 +180,7 @@ export default function ResumeAnalysisPage() {
               className="w-full flex-1 min-h-[200px] border border-border-subtle rounded-lg p-3 font-body-md text-text-primary bg-surface resize-none focus:outline-none focus:border-agent-accent mb-4"
               placeholder="请粘贴简历原文，或点击「文件上传」上传 DOCX/DOC/文本文件..."
               value={rawText}
+              disabled={loading}
               onChange={(e) => {
                 setRawText(e.target.value)
                 if (!e.target.value.trim()) setSelectedFileName('')
@@ -163,11 +195,11 @@ export default function ResumeAnalysisPage() {
 
             <button
               onClick={handleSubmit}
-              disabled={loading || !title.trim()}
+              disabled={loading || !title.trim() || !rawText.trim()}
               className="w-full bg-primary text-on-primary font-body-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors mt-auto disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-sm">{loading ? 'hourglass_top' : 'psychology'}</span>
-              {loading ? '正在处理...' : '开始深度解析'}
+              {loading ? (loadingLabel || '正在处理...') : '开始深度解析'}
             </button>
           </div>
         </div>
@@ -177,14 +209,19 @@ export default function ResumeAnalysisPage() {
           {result ? (
             <>
               {/* Status Bar */}
-              <div className="bg-agent-running/30 border border-agent-accent/20 rounded-xl p-4 flex items-center justify-between">
+              <div className={`${result.parse_status === 'failed' ? 'bg-risk-high/10 border-risk-high/30' : result.parse_status === 'succeeded' ? 'bg-agent-running/30 border-agent-accent/20' : 'bg-risk-medium/10 border-risk-medium/30'} border rounded-xl p-4 flex items-center justify-between`}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-agent-accent/20 flex items-center justify-center text-agent-accent">
-                    <span className="material-symbols-outlined text-lg">check</span>
+                    <span className="material-symbols-outlined text-lg">
+                      {result.parse_status === 'failed' ? 'error' : result.parse_status === 'succeeded' ? 'check' : 'hourglass_top'}
+                    </span>
                   </div>
                   <div>
-                    <p className="font-body-md text-text-primary font-medium">简历已创建</p>
+                    <p className="font-body-md text-text-primary font-medium">
+                      {result.parse_status === 'succeeded' ? '简历解析完成' : result.parse_status === 'failed' ? '简历解析失败' : '简历已创建，等待解析'}
+                    </p>
                     <p className="font-body-sm text-text-secondary">ID: {result.id}</p>
+                    {parseError && <p className="font-body-sm text-risk-high mt-1">{parseError}</p>}
                   </div>
                 </div>
               </div>
@@ -203,6 +240,10 @@ export default function ResumeAnalysisPage() {
                     { icon: 'category', label: '来源类型', value: result.source_type },
                     { icon: 'text_snippet', label: '原文长度', value: `${result.raw_text.length} 字` },
                     { icon: 'schedule', label: '创建时间', value: new Date(result.created_at).toLocaleString('zh-CN') },
+                    { icon: 'person', label: '姓名', value: String(basicInfo.name || '未识别') },
+                    { icon: 'work', label: '项目数量', value: `${projects.length} 个` },
+                    { icon: 'psychology', label: '技能数量', value: `${skills.length} 项` },
+                    { icon: 'business_center', label: '经历数量', value: `${experiences.length} 段` },
                   ].map((item) => (
                     <div key={item.label} className="border border-border-subtle rounded-lg p-4 bg-surface hover:border-outline-variant transition-colors">
                       <div className="flex items-center gap-2 mb-2">
@@ -213,6 +254,32 @@ export default function ResumeAnalysisPage() {
                     </div>
                   ))}
                 </div>
+                {result.parse_status === 'succeeded' && structured && (
+                  <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="border border-border-subtle rounded-lg p-4 bg-surface">
+                      <h4 className="font-body-md font-medium text-text-primary mb-3">识别技能</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {skills.slice(0, 12).map((skill, index) => (
+                          <span key={index} className="px-2 py-1 bg-agent-running/30 text-agent-accent rounded font-body-sm">
+                            {String((skill as Record<string, unknown>).name || skill)}
+                          </span>
+                        ))}
+                        {skills.length === 0 && <span className="font-body-sm text-on-surface-variant">暂无结构化技能</span>}
+                      </div>
+                    </div>
+                    <div className="border border-border-subtle rounded-lg p-4 bg-surface">
+                      <h4 className="font-body-md font-medium text-text-primary mb-3">识别项目</h4>
+                      <div className="space-y-2">
+                        {projects.slice(0, 4).map((project, index) => (
+                          <p key={index} className="font-body-sm text-text-secondary">
+                            {String((project as Record<string, unknown>).name || `项目 ${index + 1}`)}
+                          </p>
+                        ))}
+                        {projects.length === 0 && <span className="font-body-sm text-on-surface-variant">暂无结构化项目</span>}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           ) : (
