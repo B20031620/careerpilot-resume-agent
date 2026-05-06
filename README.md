@@ -124,6 +124,16 @@ cd frontend && npm run dev
 1. 点击左侧「工作台」
 2. 查看简历数量、岗位数量、报告数量等实时统计
 
+**Step 7 — 模拟面试**
+
+1. 点击左侧「模拟面试」
+2. 可选择已有简历和岗位 JD（可选）
+3. 点击「开始面试」
+4. 面试官提出问题，在文本框中输入回答，点击「提交回答」
+5. 右侧面板展示 AI 反馈：评分、优点、改进点、高风险提醒
+6. 点击「下一题」继续，或「结束面试」生成最终报告
+7. 最终报告包含综合评分、各轮详情和文本摘要
+
 ### 7. 验证
 
 - 打开 http://localhost:5173 可以看到中文页面
@@ -131,7 +141,7 @@ cd frontend && npm run dev
 - 工作台展示真实数据统计（简历数、岗位数、报告数）
 - 设置页可查看模型配置状态和测试连接
 - 运行 `cd frontend && npm run build` 验证前端编译
-- 运行 `cd backend && USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（29 个）
+- 运行 `cd backend && USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（39 个）
 
 ## 后端 API
 
@@ -207,6 +217,37 @@ cd frontend && npm run dev
 
 匹配报告包含：overall_score、skill_score、project_score、experience_score、expression_score、strengths、weaknesses、missing_keywords、suggestions、report_markdown。
 
+### 模拟面试
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/interviews` | 创建面试会话 |
+| GET | `/api/interviews/{session_id}` | 获取会话详情（含回合列表、当前问题） |
+| POST | `/api/interviews/{session_id}/answer` | 提交回答（返回评估结果和下一题） |
+| POST | `/api/interviews/{session_id}/finish` | 结束面试（生成最终报告） |
+
+创建面试请求体：
+
+```json
+{
+  "resume_id": "uuid (可选)",
+  "jd_id": "uuid (可选)",
+  "interview_type": "technical_1",
+  "question_count_target": 5
+}
+```
+
+提交回答请求体：
+
+```json
+{
+  "answer": "我的回答..."
+}
+```
+
+回答评估返回：score、strengths、improvements、risks、follow_up_needed。
+最终报告返回：final_report_json（含 average_score、total_turns、各轮详情）、final_report_markdown。
+
 **Mock 模式**：设置 `USE_MOCK_LLM=true` 环境变量后，匹配分析使用稳定的假数据而不调用 DeepSeek API，适合开发和测试。
 
 **未配置 API Key**：当 `DEEPSEEK_API_KEY` 未配置且 `USE_MOCK_LLM` 未启用时，匹配接口返回 422 错误和友好的配置提示，不会导致 500。
@@ -229,10 +270,10 @@ careerpilot-resume-agent/
       models/         # ORM 模型 (Resume, JobDescription, Report, Interview, AgentRun)
       schemas/        # Pydantic 请求/响应 schema
       api/            # API 路由 (health, settings, resumes, jobs, reports, matches)
-      agents/         # LangGraph Agent (resume_match graph + nodes + state)
+      agents/         # LangGraph Agent (resume_match + mock_interview)
       prompts/        # Prompt YAML 模板 (resume_parse, jd_analysis, resume_match)
       services/llm/   # LLM Provider 抽象层 (含同步 chat_sync 方法)
-      tests/          # 测试 (29 个，含真实 LLM 路径 mock 测试)
+      tests/          # 测试 (39 个，含面试/真实 LLM 路径 mock 测试)
     data/             # SQLite 数据库文件 (gitignored)
   sample_data/        # 示例数据 (简历 + JD)
   docs/               # 项目文档
