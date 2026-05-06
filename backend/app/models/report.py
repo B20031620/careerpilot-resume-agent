@@ -15,6 +15,7 @@ class Report(Base):
     __tablename__ = "reports"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
     resume_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
     jd_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
     report_type: Mapped[str] = mapped_column(String(30), default="match")

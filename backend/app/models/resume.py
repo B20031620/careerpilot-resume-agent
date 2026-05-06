@@ -15,6 +15,7 @@ class Resume(Base):
     __tablename__ = "resumes"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     source_type: Mapped[str] = mapped_column(String(20), default="text")
     raw_text: Mapped[str] = mapped_column(Text, default="")

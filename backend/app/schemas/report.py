@@ -23,6 +23,11 @@ class ReportRead(BaseModel):
     report_markdown: Optional[str] = None
     created_at: datetime
 
+    # Enriched fields
+    resume_title: Optional[str] = None
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+
     model_config = {"from_attributes": True}
 
 
@@ -33,5 +38,9 @@ class ReportListItem(BaseModel):
     report_type: str
     overall_score: Optional[int]
     created_at: datetime
+    resume_title: Optional[str] = None
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+    status: str = "succeeded"  # Inferred from score presence
 
     model_config = {"from_attributes": True}

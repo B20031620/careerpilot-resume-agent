@@ -1,3 +1,6 @@
+import os
+from unittest.mock import patch
+
 import pytest
 
 
@@ -34,8 +37,9 @@ async def test_model_status_configuration_shape(client):
 
 @pytest.mark.asyncio
 async def test_model_connection_without_key_returns_controlled_error(client):
-    response = await client.post("/api/settings/test-model-connection")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is False
-    assert "DEEPSEEK_API_KEY" in data["message"]
+    with patch("app.core.config.settings.DEEPSEEK_API_KEY", ""):
+        response = await client.post("/api/settings/test-model-connection")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False, f"Expected success=False, got {data}"
+        assert "DEEPSEEK_API_KEY" in data["message"]

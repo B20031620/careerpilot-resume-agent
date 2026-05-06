@@ -1,7 +1,7 @@
 import pytest
 
 from app.models.report import Report
-from app.tests.conftest import TestSessionLocal
+from app.tests.conftest import TEST_USER_ID, TestSessionLocal
 
 
 @pytest.mark.asyncio
@@ -13,10 +13,9 @@ async def test_list_reports_empty(client):
 
 @pytest.mark.asyncio
 async def test_list_reports(client):
-    # Seed reports directly via DB
     db = TestSessionLocal()
-    db.add(Report(id="r1", report_type="match", overall_score=82, resume_id="res1", jd_id="jd1"))
-    db.add(Report(id="r2", report_type="interview", overall_score=76, resume_id="res2"))
+    db.add(Report(id="r1", user_id=TEST_USER_ID, report_type="match", overall_score=82, resume_id="res1", jd_id="jd1"))
+    db.add(Report(id="r2", user_id=TEST_USER_ID, report_type="interview", overall_score=76, resume_id="res2"))
     db.commit()
     db.close()
 
@@ -29,7 +28,7 @@ async def test_list_reports(client):
 @pytest.mark.asyncio
 async def test_get_report(client):
     db = TestSessionLocal()
-    db.add(Report(id="r1", report_type="match", overall_score=85, resume_id="res1", jd_id="jd1",
+    db.add(Report(id="r1", user_id=TEST_USER_ID, report_type="match", overall_score=85, resume_id="res1", jd_id="jd1",
                   skill_score=88, project_score=80, experience_score=82, expression_score=90))
     db.commit()
     db.close()
@@ -50,7 +49,7 @@ async def test_get_report_not_found(client):
 @pytest.mark.asyncio
 async def test_delete_report(client):
     db = TestSessionLocal()
-    db.add(Report(id="r1", report_type="match", overall_score=80))
+    db.add(Report(id="r1", user_id=TEST_USER_ID, report_type="match", overall_score=80))
     db.commit()
     db.close()
 

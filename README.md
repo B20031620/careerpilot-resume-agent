@@ -88,6 +88,8 @@ USE_MOCK_LLM=true uvicorn app.main:app --reload
 cd frontend && npm run dev
 ```
 
+打开 http://localhost:5173，使用默认账号登录：`demo@careerpilot.local` / `demo123456`。
+
 **Step 2 — 创建简历**
 
 1. 打开 http://localhost:5173
@@ -141,7 +143,19 @@ cd frontend && npm run dev
 - 工作台展示真实数据统计（简历数、岗位数、报告数）
 - 设置页可查看模型配置状态和测试连接
 - 运行 `cd frontend && npm run build` 验证前端编译
-- 运行 `cd backend && DEEPSEEK_API_KEY= USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（42 个）
+- 运行 `cd backend && DEEPSEEK_API_KEY= USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（47 个）
+
+### 认证
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/auth/register` | 注册 |
+| POST | `/api/auth/login` | 登录（返回 JWT token） |
+| GET | `/api/auth/me` | 获取当前用户信息 |
+
+默认 Demo 用户：`demo@careerpilot.local` / `demo123456`
+
+所有数据 API 均需 Bearer token 认证，按 user_id 隔离数据。
 
 ## 后端 API
 
@@ -274,7 +288,7 @@ careerpilot-resume-agent/
       agents/         # LangGraph Agent (resume_match + mock_interview)
       prompts/        # Prompt YAML 模板 (resume_parse, jd_analysis, resume_match)
       services/llm/   # LLM Provider 抽象层 (含同步 chat_sync 方法)
-      tests/          # 测试 (42 个，含文件上传/面试/真实 LLM 路径 mock 测试)
+      tests/          # 测试 (47 个，含认证/数据隔离/文件上传/面试/真实 LLM 路径 mock 测试)
     data/             # SQLite 数据库文件 (gitignored)
   sample_data/        # 示例数据 (简历 + JD)
   docs/               # 项目文档

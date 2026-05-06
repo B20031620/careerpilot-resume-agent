@@ -1,6 +1,12 @@
 import os
+import uuid
+from unittest.mock import patch
 
 import pytest
+
+from app.models.job_description import JobDescription
+from app.models.resume import Resume
+from app.tests.conftest import TestSessionLocal
 
 
 @pytest.mark.asyncio
@@ -142,8 +148,8 @@ async def test_finish_interview(client):
 
 @pytest.mark.asyncio
 async def test_interview_without_key_returns_controlled_error(client):
-    os.environ.pop("USE_MOCK_LLM", None)
-    try:
+    os.environ["USE_MOCK_LLM"] = "false"
+    with patch("app.core.config.settings.DEEPSEEK_API_KEY", ""):
         resume_resp = await client.post("/api/resumes", json={
             "title": "测试简历", "raw_text": "内容",
         })
@@ -153,8 +159,7 @@ async def test_interview_without_key_returns_controlled_error(client):
         assert resp.status_code == 422
         detail = resp.json()["detail"]
         assert "未配置" in detail or "DEEPSEEK_API_KEY" in detail
-    finally:
-        pass
+    os.environ.pop("USE_MOCK_LLM", None)
 
 
 @pytest.mark.asyncio
@@ -212,3 +217,32 @@ async def test_interview_stops_after_target_questions(client):
         assert len(data["turns"]) == 2
     finally:
         os.environ.pop("USE_MOCK_LLM", None)
+
+
+@pytest.mark.asyncio
+async def test_interview_rejects_other_users_resume_and_jd(client):
+    other_user_id = str(uuid.uuid4())
+    db = TestSessionLocal()
+    try:
+        other_resume = Resume(
+            id=str(uuid.uuid4()),
+            user_id=other_user_id,
+            title="别人的简历",
+            raw_text="敏感简历内容",
+        )
+        other_job = JobDescription(
+            id=str(uuid.uuid4()),
+            user_id=other_user_id,
+            title="别人的岗位",
+            raw_text="敏感JD内容",
+        )
+        db.add_all([other_resume, other_job])
+        db.commit()
+
+        resp = await client.post("/api/interviews", json={
+            "resume_id": other_resume.id,
+            "jd_id": other_job.id,
+        })
+        assert resp.status_code == 404
+    finally:
+        db.close()

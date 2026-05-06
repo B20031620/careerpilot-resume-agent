@@ -5,15 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.agents.mock_interview.graph import run_answer, run_init, run_finish
 from app.agents.mock_interview.schemas import InterviewAnswerRequest, InterviewSessionResponse, InterviewTurnResponse
-from app.api.deps import get_db
-from app.db.session import SessionLocal
+from app.api.deps import get_current_user_id, get_db
 from app.models.interview import InterviewSession, InterviewTurn
+from app.models.job_description import JobDescription
+from app.models.resume import Resume
 
 router = APIRouter(prefix="/api/interviews", tags=["interviews"])
-
-
-def _new_db():
-    return SessionLocal()
 
 
 def _session_to_response(session: InterviewSession, db: Session) -> InterviewSessionResponse:
@@ -39,7 +36,6 @@ def _session_to_response(session: InterviewSession, db: Session) -> InterviewSes
         for t in turns
     ]
 
-    # Find current (latest unanswered) question
     current_q = None
     current_q_type = None
     for t in turns:
@@ -66,11 +62,43 @@ def _session_to_response(session: InterviewSession, db: Session) -> InterviewSes
     )
 
 
+@router.get("", response_model=list[InterviewSessionResponse])
+def list_interviews(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    sessions = (
+        db.query(InterviewSession)
+        .filter(InterviewSession.user_id == user_id)
+        .order_by(InterviewSession.created_at.desc())
+        .all()
+    )
+    return [_session_to_response(s, db) for s in sessions]
+
+
 @router.post("", response_model=InterviewSessionResponse, status_code=201)
-def create_interview(body: dict, db: Session = Depends(get_db)):
+def create_interview(body: dict, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    resume_id = body.get("resume_id")
+    if resume_id:
+        resume = db.query(Resume).filter(
+            Resume.id == resume_id,
+            Resume.user_id == user_id,
+            Resume.deleted_at.is_(None),
+        ).first()
+        if not resume:
+            raise HTTPException(status_code=404, detail="Resume not found")
+
+    jd_id = body.get("jd_id")
+    if jd_id:
+        job = db.query(JobDescription).filter(
+            JobDescription.id == jd_id,
+            JobDescription.user_id == user_id,
+            JobDescription.deleted_at.is_(None),
+        ).first()
+        if not job:
+            raise HTTPException(status_code=404, detail="Job description not found")
+
     session = InterviewSession(
-        resume_id=body.get("resume_id"),
-        jd_id=body.get("jd_id"),
+        user_id=user_id,
+        resume_id=resume_id,
+        jd_id=jd_id,
         interview_type=body.get("interview_type", "technical_1"),
         question_count_target=body.get("question_count_target", 5),
         status="active",
@@ -79,14 +107,13 @@ def create_interview(body: dict, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(session)
 
-    # Use a fresh session for the graph so the API session isn't closed by nodes
     result = run_init(
         session.id,
         session.resume_id or "",
         session.jd_id or "",
         interview_type=session.interview_type,
         question_count_target=session.question_count_target,
-        db_session_factory=_new_db,
+        db_session_factory=lambda: type(db)(bind=db.bind),
     )
 
     if result.get("error"):
@@ -97,7 +124,6 @@ def create_interview(body: dict, db: Session = Depends(get_db)):
             raise HTTPException(status_code=422, detail=error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 
-    # Save first question as a turn
     turn = InterviewTurn(
         session_id=session.id,
         turn_index=0,
@@ -111,22 +137,25 @@ def create_interview(body: dict, db: Session = Depends(get_db)):
 
 
 @router.get("/{session_id}", response_model=InterviewSessionResponse)
-def get_interview(session_id: str, db: Session = Depends(get_db)):
-    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+def get_interview(session_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    session = db.query(InterviewSession).filter(
+        InterviewSession.id == session_id, InterviewSession.user_id == user_id
+    ).first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     return _session_to_response(session, db)
 
 
 @router.post("/{session_id}/answer", response_model=InterviewSessionResponse)
-def submit_answer(session_id: str, body: InterviewAnswerRequest, db: Session = Depends(get_db)):
-    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+def submit_answer(session_id: str, body: InterviewAnswerRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    session = db.query(InterviewSession).filter(
+        InterviewSession.id == session_id, InterviewSession.user_id == user_id
+    ).first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.status != "active":
         raise HTTPException(status_code=400, detail="Interview session is not active")
 
-    # Get turns for this session
     turns = (
         db.query(InterviewTurn)
         .filter(InterviewTurn.session_id == session_id)
@@ -134,7 +163,6 @@ def submit_answer(session_id: str, body: InterviewAnswerRequest, db: Session = D
         .all()
     )
 
-    # Find the latest unanswered turn
     current_turn = None
     for t in reversed(turns):
         if t.evaluation_json is None and t.user_answer is None:
@@ -144,11 +172,9 @@ def submit_answer(session_id: str, body: InterviewAnswerRequest, db: Session = D
     if not current_turn:
         raise HTTPException(status_code=400, detail="No pending question to answer")
 
-    # Update the turn with the answer
     current_turn.user_answer = body.answer
     db.commit()
 
-    # Build state for answer evaluation
     current_state = {
         "session_id": session.id,
         "resume_id": session.resume_id or "",
@@ -176,7 +202,7 @@ def submit_answer(session_id: str, body: InterviewAnswerRequest, db: Session = D
         ],
     }
 
-    result = run_answer(current_state, db_session_factory=_new_db)
+    result = run_answer(current_state, db_session_factory=lambda: type(db)(bind=db.bind))
 
     if result.get("error"):
         error_msg = result["error"]
@@ -184,7 +210,6 @@ def submit_answer(session_id: str, body: InterviewAnswerRequest, db: Session = D
             raise HTTPException(status_code=422, detail=error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 
-    # Save evaluation to current turn
     current_turn.evaluation_json = {
         "strengths": result.get("eval_strengths", []),
         "improvements": result.get("eval_improvements", []),
@@ -193,13 +218,11 @@ def submit_answer(session_id: str, body: InterviewAnswerRequest, db: Session = D
     current_turn.score = result.get("eval_score")
     current_turn.follow_up_needed = result.get("follow_up_needed", False)
 
-    # Update session question index
     if not result.get("follow_up_needed"):
         session.current_question_index = result.get("current_question_index", session.current_question_index + 1)
 
     db.flush()
 
-    # Generate next question if not finished
     next_question_text = result.get("current_question", "")
     idx = session.current_question_index
     if next_question_text and idx < session.question_count_target:
@@ -219,8 +242,10 @@ def submit_answer(session_id: str, body: InterviewAnswerRequest, db: Session = D
 
 
 @router.post("/{session_id}/finish", response_model=InterviewSessionResponse)
-def finish_interview(session_id: str, db: Session = Depends(get_db)):
-    session = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+def finish_interview(session_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    session = db.query(InterviewSession).filter(
+        InterviewSession.id == session_id, InterviewSession.user_id == user_id
+    ).first()
     if not session:
         raise HTTPException(status_code=404, detail="Interview session not found")
     if session.status != "active":
@@ -249,7 +274,7 @@ def finish_interview(session_id: str, db: Session = Depends(get_db)):
         ],
     }
 
-    result = run_finish(current_state, db_session_factory=_new_db)
+    result = run_finish(current_state, db_session_factory=lambda: type(db)(bind=db.bind))
 
     if result.get("error"):
         raise HTTPException(status_code=500, detail=result["error"])

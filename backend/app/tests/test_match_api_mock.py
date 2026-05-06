@@ -1,6 +1,12 @@
 import os
+import uuid
+from unittest.mock import patch
 
 import pytest
+
+from app.models.job_description import JobDescription
+from app.models.resume import Resume
+from app.tests.conftest import TestSessionLocal
 
 
 @pytest.mark.asyncio
@@ -80,9 +86,8 @@ async def test_get_match_not_found(client):
 
 @pytest.mark.asyncio
 async def test_match_without_key_returns_controlled_error(client):
-    # Ensure mock is off and no real API key is set (test env won't have one)
-    os.environ.pop("USE_MOCK_LLM", None)
-    try:
+    os.environ["USE_MOCK_LLM"] = "false"
+    with patch("app.core.config.settings.DEEPSEEK_API_KEY", ""):
         resume_resp = await client.post("/api/resumes", json={"title": "测试", "raw_text": "内容"})
         job_resp = await client.post("/api/jobs", json={"title": "岗位", "raw_text": "JD"})
 
@@ -90,14 +95,12 @@ async def test_match_without_key_returns_controlled_error(client):
             "resume_id": resume_resp.json()["id"],
             "job_id": job_resp.json()["id"],
         })
-        # Should return 422 with controlled error, not 500
         assert match_resp.status_code == 422
         detail = match_resp.json()["detail"]
         assert "未配置" in detail or "DEEPSEEK_API_KEY" in detail
         reports_resp = await client.get("/api/reports")
         assert reports_resp.json() == []
-    finally:
-        pass
+    os.environ.pop("USE_MOCK_LLM", None)
 
 
 @pytest.mark.asyncio
@@ -113,3 +116,34 @@ async def test_match_resume_not_found(client):
         assert reports_resp.json() == []
     finally:
         os.environ.pop("USE_MOCK_LLM", None)
+
+
+@pytest.mark.asyncio
+async def test_match_rejects_other_users_resume_and_job(client):
+    other_user_id = str(uuid.uuid4())
+    db = TestSessionLocal()
+    try:
+        other_resume = Resume(
+            id=str(uuid.uuid4()),
+            user_id=other_user_id,
+            title="别人的简历",
+            raw_text="敏感简历内容",
+        )
+        other_job = JobDescription(
+            id=str(uuid.uuid4()),
+            user_id=other_user_id,
+            title="别人的岗位",
+            raw_text="敏感JD内容",
+        )
+        db.add_all([other_resume, other_job])
+        db.commit()
+
+        resp = await client.post("/api/matches", json={
+            "resume_id": other_resume.id,
+            "job_id": other_job.id,
+        })
+        assert resp.status_code == 404
+        reports_resp = await client.get("/api/reports")
+        assert reports_resp.json() == []
+    finally:
+        db.close()
