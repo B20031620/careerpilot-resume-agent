@@ -110,6 +110,28 @@ npm run dev
 | GET | `/api/reports/{report_id}` | 获取报告详情 |
 | DELETE | `/api/reports/{report_id}` | 删除报告 |
 
+### 匹配分析
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/matches` | 运行简历/JD匹配分析 |
+| GET | `/api/matches/{report_id}` | 获取匹配报告详情 |
+
+创建匹配请求体：
+
+```json
+{
+  "resume_id": "uuid",
+  "job_id": "uuid"
+}
+```
+
+匹配报告包含：overall_score、skill_score、project_score、experience_score、expression_score、strengths、weaknesses、missing_keywords、suggestions、report_markdown。
+
+**Mock 模式**：设置 `USE_MOCK_LLM=true` 环境变量后，匹配分析使用稳定的假数据而不调用 DeepSeek API，适合开发和测试。
+
+**未配置 API Key**：当 `DEEPSEEK_API_KEY` 未配置且 `USE_MOCK_LLM` 未启用时，匹配接口返回 422 错误和友好的配置提示，不会导致 500。
+
 ## 项目结构
 
 ```
@@ -127,7 +149,9 @@ careerpilot-resume-agent/
       db/             # 数据库 (SQLAlchemy session + base)
       models/         # ORM 模型 (Resume, JobDescription, Report, Interview, AgentRun)
       schemas/        # Pydantic 请求/响应 schema
-      api/            # API 路由 (health, settings, resumes, jobs, reports)
+      api/            # API 路由 (health, settings, resumes, jobs, reports, matches)
+      agents/         # LangGraph Agent (resume_match graph + nodes + state)
+      prompts/        # Prompt YAML 模板 (resume_parse, jd_analysis, resume_match)
       services/llm/   # LLM Provider 抽象层
       tests/          # 测试
     data/             # SQLite 数据库文件 (gitignored)

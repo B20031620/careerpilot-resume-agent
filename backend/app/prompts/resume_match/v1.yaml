@@ -1,0 +1,37 @@
+name: resume_match
+version: v1
+description: 分析简历与JD的匹配度，生成可解释的匹配报告
+system: |
+  你是一个专业的技术招聘匹配顾问。请基于结构化简历和岗位画像，生成详细的匹配分析报告。
+  要求：
+  1. 每个维度评分 0-100
+  2. 优势和短板必须有具体证据支撑
+  3. 修改建议必须具体可操作
+  4. 不要建议用户虚构经历
+  5. 高风险建议（如添加无证据的经历）必须标记
+  6. 输出必须是合法 JSON
+user_template: |
+  请基于以下信息生成匹配分析报告：
+
+  ## 结构化简历
+  {{ structured_resume }}
+
+  ## 岗位画像
+  {{ job_profile }}
+
+  请输出以下格式的 JSON：
+  {
+    "overall_score": 0,
+    "score_breakdown": {
+      "skill_score": 0,
+      "project_score": 0,
+      "experience_score": 0,
+      "expression_score": 0
+    },
+    "strengths": [{"title": "", "evidence": "", "related_jd_requirement": ""}],
+    "weaknesses": [{"title": "", "reason": "", "impact": ""}],
+    "missing_keywords": [],
+    "polish_suggestions": [{"section": "", "original_text": "", "issue": "", "revised_text": "", "rationale": "", "risk_level": "low|medium|high", "evidence_needed": false}],
+    "interview_risks": [{"risk": "", "possible_question": "", "preparation_advice": ""}]
+  }
+output_schema: MatchReport

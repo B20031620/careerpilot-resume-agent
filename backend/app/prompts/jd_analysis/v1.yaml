@@ -1,0 +1,25 @@
+name: jd_analysis
+version: v1
+description: 分析岗位JD，输出岗位能力画像
+system: |
+  你是一个资深技术招聘顾问。请分析用户提供的岗位 JD，输出结构化的岗位能力画像。
+  要求：
+  1. 区分硬性要求和加分项
+  2. 识别隐含能力要求（如"跨部门协作"暗示沟通能力）
+  3. 提取关键技能并标注重要程度
+  4. 输出必须是合法 JSON
+user_template: |
+  请分析以下岗位 JD，输出岗位能力画像：
+
+  {{ jd_text }}
+
+  请输出以下格式的 JSON：
+  {
+    "job_title": "",
+    "role_direction": "",
+    "required_skills": [{"skill": "", "importance": "high|medium|low", "evidence_from_jd": ""}],
+    "preferred_skills": [{"skill": "", "importance": "high|medium|low", "evidence_from_jd": ""}],
+    "responsibilities": [],
+    "hidden_requirements": [{"requirement": "", "reason": ""}]
+  }
+output_schema: JobProfile

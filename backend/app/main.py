@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes_health import router as health_router
 from app.api.routes_jobs import router as jobs_router
+from app.api.routes_matches import router as matches_router
 from app.api.routes_reports import router as reports_router
 from app.api.routes_resumes import router as resumes_router
 from app.api.routes_settings import router as settings_router
@@ -38,3 +39,4 @@ app.include_router(settings_router)
 app.include_router(resumes_router)
 app.include_router(jobs_router)
 app.include_router(reports_router)
+app.include_router(matches_router)

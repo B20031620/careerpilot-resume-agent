@@ -29,7 +29,6 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(autouse=True)
 def setup_db():
-    # Import all models so Base knows about them
     import app.models.resume  # noqa: F401
     import app.models.job_description  # noqa: F401
     import app.models.report  # noqa: F401
