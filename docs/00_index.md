@@ -29,7 +29,13 @@
 9. [Git 与 GitHub 说明](./09_git_github.md)
    说明本地 Git 管理、提交规范、GitHub 上传方式和敏感信息保护。
 
-10. [界面设计说明](./design.md)
+10. [功能测试与产品化缺口审计](./10_functional_audit.md)
+   记录真实简历流程测试结果、产品缺口和修复优先级。
+
+11. [Claude Phase 7 指令](./11_claude_phase7_prompt.md)
+   给 Claude Code 使用，聚焦用户系统、历史记录、任务状态和真实解析。
+
+12. [界面设计说明](./design.md)
    给 Google Stitch、Figma 或前端开发使用，说明页面设计、组件规范和页面流转。
 
 ## 当前文档状态
@@ -45,6 +51,8 @@
 | 07_llm_provider.md | DeepSeek 大模型接入说明 | 已完成第一版 |
 | 08_implementation_plan.md | Claude Code 开发实施计划 | 已完成第一版 |
 | 09_git_github.md | Git 与 GitHub 上传说明 | 已完成第一版 |
+| 10_functional_audit.md | 真实流程功能测试与产品化缺口审计 | 已完成第一版 |
+| 11_claude_phase7_prompt.md | Claude Code Phase 7 开发指令 | 已完成第一版 |
 | design.md | 中文页面设计与流转说明 | 已完成第一版 |
 
 ## 开发前检查清单
