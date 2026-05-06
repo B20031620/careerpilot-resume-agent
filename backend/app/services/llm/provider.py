@@ -13,4 +13,13 @@ class LLMProvider(Protocol):
         response_format: dict[str, Any] | None = None,
     ) -> dict[str, Any]: ...
 
+    def chat_sync(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        model: str | None = None,
+        temperature: float = 0.2,
+        response_format: dict[str, Any] | None = None,
+    ) -> dict[str, Any]: ...
+
     async def test_connection(self) -> dict[str, Any]: ...

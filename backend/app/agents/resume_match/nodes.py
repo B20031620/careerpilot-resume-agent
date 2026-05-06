@@ -215,23 +215,8 @@ def persist_report(state: ResumeMatchState, runtime: RuntimeContext) -> Dict[str
 
 
 def _call_llm_json(runtime: RuntimeContext, messages: list) -> dict:
-    import asyncio
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            result = loop.run_in_executor(pool, _call_llm_json_sync, runtime, messages)
-            import asyncio as _aio
-            return _aio.get_event_loop().run_until_complete(result)
-    return _call_llm_json_sync(runtime, messages)
-
-
-def _call_llm_json_sync(runtime: RuntimeContext, messages: list) -> dict:
-    import asyncio
     provider = runtime.llm_provider
-    resp = asyncio.get_event_loop().run_until_complete(
-        provider.chat(messages, temperature=0.2, response_format={"type": "json_object"})
-    )
+    resp = provider.chat_sync(messages, temperature=0.2, response_format={"type": "json_object"})
     content = resp["choices"][0]["message"]["content"]
     return json.loads(content)
 

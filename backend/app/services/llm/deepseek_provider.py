@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAI
 
 from app.core.config import settings
 
@@ -12,13 +12,20 @@ class DeepSeekProvider:
         self.api_key = api_key
         self.base_url = base_url
         self.default_model = default_model
-        self._client: AsyncOpenAI | None = None
+        self._async_client: AsyncOpenAI | None = None
+        self._sync_client: OpenAI | None = None
 
     @property
     def client(self) -> AsyncOpenAI:
-        if self._client is None:
-            self._client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url, timeout=30.0)
-        return self._client
+        if self._async_client is None:
+            self._async_client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url, timeout=30.0)
+        return self._async_client
+
+    @property
+    def sync_client(self) -> OpenAI:
+        if self._sync_client is None:
+            self._sync_client = OpenAI(api_key=self.api_key, base_url=self.base_url, timeout=30.0)
+        return self._sync_client
 
     async def chat(
         self,
@@ -37,6 +44,25 @@ class DeepSeekProvider:
             kwargs["response_format"] = response_format
 
         response = await self.client.chat.completions.create(**kwargs)
+        return response.model_dump()
+
+    def chat_sync(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        model: str | None = None,
+        temperature: float = 0.2,
+        response_format: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "model": model or self.default_model,
+            "messages": messages,
+            "temperature": temperature,
+        }
+        if response_format:
+            kwargs["response_format"] = response_format
+
+        response = self.sync_client.chat.completions.create(**kwargs)
         return response.model_dump()
 
     async def test_connection(self) -> dict[str, Any]:

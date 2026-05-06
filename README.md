@@ -73,19 +73,65 @@ cd frontend
 npm run dev
 ```
 
-打开 http://localhost:5173 后：
-1. 在「简历分析」页创建一份简历
-2. 在「岗位匹配」页选择简历并输入 JD，点击「开始深度匹配」
-3. 系统将返回 Mock 匹配报告（包含评分、优势、差距、缺失关键词、润色建议）
-4. 报告自动保存，可在「历史报告」页查看
+### 6. 完整 Demo 路线
 
-### 6. 验证
+项目提供了示例数据文件，可快速体验完整流程：
+
+**Step 1 — 启动服务**
+
+```bash
+# 终端 1：后端（Mock 模式）
+cd backend && source .venv/bin/activate
+USE_MOCK_LLM=true uvicorn app.main:app --reload
+
+# 终端 2：前端
+cd frontend && npm run dev
+```
+
+**Step 2 — 创建简历**
+
+1. 打开 http://localhost:5173
+2. 点击左侧「简历分析」
+3. 标题输入：`AI工程师_张明`
+4. 将 `sample_data/resume_ai_engineer.md` 的内容粘贴到文本框
+5. 点击「开始深度解析」
+
+**Step 3 — 创建岗位 & 生成匹配报告**
+
+1. 点击左侧「岗位匹配」
+2. 选择刚才创建的简历
+3. 岗位名称输入：`高级AI Agent工程师`
+4. 公司名输入：`某头部AI公司`
+5. 将 `sample_data/jd_ai_agent_engineer.md` 的内容粘贴到 JD 文本框
+6. 点击「开始深度匹配」
+7. 查看匹配报告：综合评分、技能/项目/经验/表达四维评分、核心优势、关键差距、缺失关键词
+
+**Step 4 — 查看润色建议**
+
+1. 点击左侧「简历润色」
+2. 选择同一份简历和岗位
+3. 点击「生成润色建议」
+4. 左右对比查看原文与 AI 优化建议，注意风险等级标注
+
+**Step 5 — 查看历史报告**
+
+1. 点击左侧「历史报告」
+2. 查看所有已生成报告的列表
+3. 点击「查看」展开报告详情摘要
+
+**Step 6 — 工作台概览**
+
+1. 点击左侧「工作台」
+2. 查看简历数量、岗位数量、报告数量等实时统计
+
+### 7. 验证
 
 - 打开 http://localhost:5173 可以看到中文页面
 - 左侧导航可切换工作台、简历分析、岗位匹配等 8 个核心页面
+- 工作台展示真实数据统计（简历数、岗位数、报告数）
 - 设置页可查看模型配置状态和测试连接
 - 运行 `cd frontend && npm run build` 验证前端编译
-- 运行 `cd backend && USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（27 个）
+- 运行 `cd backend && USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（29 个）
 
 ## 后端 API
 
@@ -185,9 +231,10 @@ careerpilot-resume-agent/
       api/            # API 路由 (health, settings, resumes, jobs, reports, matches)
       agents/         # LangGraph Agent (resume_match graph + nodes + state)
       prompts/        # Prompt YAML 模板 (resume_parse, jd_analysis, resume_match)
-      services/llm/   # LLM Provider 抽象层
-      tests/          # 测试
+      services/llm/   # LLM Provider 抽象层 (含同步 chat_sync 方法)
+      tests/          # 测试 (29 个，含真实 LLM 路径 mock 测试)
     data/             # SQLite 数据库文件 (gitignored)
+  sample_data/        # 示例数据 (简历 + JD)
   docs/               # 项目文档
   .env.example        # 环境变量模板
 ```
