@@ -26,7 +26,10 @@
 8. [开发实施计划](./08_implementation_plan.md)
    给 Claude Code 或其他开发 Agent 使用，说明如何从当前文档和 Stitch 页面落地 MVP。
 
-9. [界面设计说明](./design.md)
+9. [Git 与 GitHub 说明](./09_git_github.md)
+   说明本地 Git 管理、提交规范、GitHub 上传方式和敏感信息保护。
+
+10. [界面设计说明](./design.md)
    给 Google Stitch、Figma 或前端开发使用，说明页面设计、组件规范和页面流转。
 
 ## 当前文档状态
@@ -41,6 +44,7 @@
 | 06_maintenance_plan.md | 可持续维护方案 | 已完成第一版 |
 | 07_llm_provider.md | DeepSeek 大模型接入说明 | 已完成第一版 |
 | 08_implementation_plan.md | Claude Code 开发实施计划 | 已完成第一版 |
+| 09_git_github.md | Git 与 GitHub 上传说明 | 已完成第一版 |
 | design.md | 中文页面设计与流转说明 | 已完成第一版 |
 
 ## 开发前检查清单

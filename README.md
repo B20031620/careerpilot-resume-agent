@@ -17,6 +17,7 @@ CareerPilot Resume Agent 不是一个简单的“简历润色聊天机器人”�
 - [维护与迭代说明](./docs/06_maintenance_plan.md)
 - [大模型接入说明](./docs/07_llm_provider.md)
 - [开发实施计划](./docs/08_implementation_plan.md)
+- [Git 与 GitHub 说明](./docs/09_git_github.md)
 - [界面设计说明](./docs/design.md)
 
 ## 推荐 MVP 范围
