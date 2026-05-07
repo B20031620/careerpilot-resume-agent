@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
-import DashboardPage from './pages/DashboardPage'
+import ResumeWorkspacePage from './pages/ResumeWorkspacePage'
 import ResumeAnalysisPage from './pages/ResumeAnalysisPage'
 import JobMatchPage from './pages/JobMatchPage'
 import ResumePolishPage from './pages/ResumePolishPage'
@@ -34,7 +34,7 @@ export default function App() {
   const handleLogin = () => {
     getMe().then((u) => {
       setUser(u)
-      navigate('/dashboard')
+      navigate('/resumes')
     })
   }
 
@@ -47,15 +47,16 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={
-        isLoggedIn() ? <Navigate to="/dashboard" replace /> : <LoginPage onLogin={handleLogin} />
+        isLoggedIn() ? <Navigate to="/resumes" replace /> : <LoginPage onLogin={handleLogin} />
       } />
       <Route element={
         <RequireAuth>
           <AppLayout user={user} onLogout={handleLogout} />
         </RequireAuth>
       }>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
+        <Route index element={<Navigate to="/resumes" replace />} />
+        <Route path="dashboard" element={<Navigate to="/resumes" replace />} />
+        <Route path="resumes" element={<ResumeWorkspacePage />} />
         <Route path="resume-analysis" element={<ResumeAnalysisPage />} />
         <Route path="job-match" element={<JobMatchPage />} />
         <Route path="resume-polish" element={<ResumePolishPage />} />
@@ -65,7 +66,7 @@ export default function App() {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/resumes" replace />} />
     </Routes>
   )
 }

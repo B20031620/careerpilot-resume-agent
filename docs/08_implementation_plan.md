@@ -70,7 +70,7 @@ frontend/
       AgentTimeline.tsx
       ScoreRing.tsx
     pages/
-      DashboardPage.tsx
+      ResumeWorkspacePage.tsx
       ResumeAnalysisPage.tsx
       JobMatchPage.tsx
       ResumePolishPage.tsx
@@ -435,4 +435,3 @@ Graph 代码要可测试，不要把所有逻辑堆到一个节点。
 ```text
 请阅读 CLAUDE.md、docs/00_index.md、docs/08_implementation_plan.md，以及 docs/07_llm_provider.md。然后按 Phase 1 开始开发：初始化 frontend 和 backend，把 页面/stitch_markdown_design_system/ 中的 Stitch 页面整理成 React + Vite + TypeScript 前端，搭建 FastAPI 后端，完成 /health、/api/settings/model-status、/api/settings/test-model-connection，并更新 README 的本地启动说明。不要把真实 DeepSeek API Key 写入任何文件。
 ```
-

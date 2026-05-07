@@ -9,6 +9,7 @@ import {
   type InterviewTurn,
 } from '../api/interviews'
 import { ApiError } from '../api/client'
+import { getCurrentResumeId, onCurrentResumeChange, setCurrentResumeId } from '../utils/currentResume'
 
 type Phase = 'setup' | 'interview' | 'feedback' | 'finished'
 
@@ -27,8 +28,18 @@ export default function MockInterviewPage() {
   const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    listResumes().then(setResumes).catch(() => {})
+    listResumes().then((data) => {
+      setResumes(data)
+      const current = getCurrentResumeId()
+      if (current && data.some((resume) => resume.id === current)) {
+        setSelectedResumeId(current)
+      } else if (data[0]) {
+        setCurrentResumeId(data[0].id)
+        setSelectedResumeId(data[0].id)
+      }
+    }).catch(() => {})
     listJobs().then(setJobs).catch(() => {})
+    return onCurrentResumeChange(setSelectedResumeId)
   }, [])
 
   useEffect(() => {
@@ -121,7 +132,10 @@ export default function MockInterviewPage() {
               <select
                 className="w-full px-3 py-2 border border-border-subtle rounded-lg font-body-md text-text-primary bg-surface focus:outline-none focus:border-agent-accent"
                 value={selectedResumeId}
-                onChange={(e) => setSelectedResumeId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedResumeId(e.target.value)
+                  setCurrentResumeId(e.target.value)
+                }}
               >
                 <option value="">-- 不指定简历 --</option>
                 {resumes.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}

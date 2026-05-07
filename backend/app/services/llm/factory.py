@@ -9,5 +9,7 @@ def create_llm_provider():
             api_key=settings.DEEPSEEK_API_KEY,
             base_url=settings.DEEPSEEK_BASE_URL,
             default_model=settings.DEEPSEEK_MODEL,
+            timeout=float(settings.LLM_TIMEOUT_SECONDS),
+            max_retries=settings.LLM_MAX_RETRIES,
         )
     raise ValueError(f"Unsupported LLM provider: {provider}")

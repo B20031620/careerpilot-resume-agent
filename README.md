@@ -52,11 +52,12 @@ npm run dev
 
 前后端已完整联调，前端页面通过 API 客户端调用后端接口：
 
-1. **简历分析页** → `POST /api/resumes` 创建简历，展示解析结果
-2. **岗位匹配页** → `GET /api/resumes` 选择简历 + 输入 JD → `POST /api/jobs` 创建岗位 → `POST /api/matches` 生成匹配报告
-3. **简历润色页** → `GET /api/resumes` + `GET /api/jobs` 选择简历和岗位 → `POST /api/matches` 生成润色建议
-4. **历史报告页** → `GET /api/reports` 列表 → `GET /api/matches/{id}` 查看详情 → `DELETE /api/reports/{id}` 删除
-5. **设置页** → `GET /api/settings/model-status` 查看配置 + `POST /api/settings/test-model-connection` 测试连接
+1. **简历工作区** → `GET /api/resumes` 选择当前处理简历，后续功能默认围绕该简历展开
+2. **上传/分析页** → `POST /api/resumes` 或 `POST /api/resumes/upload` 创建/上传简历，自动设为当前简历并展示解析结果
+3. **岗位匹配页** → 默认读取当前简历，也可临时切换简历 + 输入 JD → `POST /api/jobs` 创建岗位 → `POST /api/matches` 生成匹配报告
+4. **简历润色页** → 默认读取当前简历，也可临时切换简历和岗位 → `POST /api/matches` 生成润色建议
+5. **历史报告页** → `GET /api/reports` 列表 → `GET /api/matches/{id}` 查看详情 → `DELETE /api/reports/{id}` 删除
+6. **设置页** → `GET /api/settings/model-status` 查看配置 + `POST /api/settings/test-model-connection` 测试连接
 
 ### 5. 使用 Mock 模式本地演示
 
@@ -93,7 +94,7 @@ cd frontend && npm run dev
 **Step 2 — 创建简历**
 
 1. 打开 http://localhost:5173
-2. 点击左侧「简历分析」
+2. 点击左侧「上传/分析」
 3. 标题输入：`AI工程师_张明`
 4. 将 `sample_data/resume_ai_engineer.md` 的内容粘贴到文本框
 5. 点击「开始深度解析」
@@ -121,10 +122,11 @@ cd frontend && npm run dev
 2. 查看所有已生成报告的列表
 3. 点击「查看」展开报告详情摘要
 
-**Step 6 — 工作台概览**
+**Step 6 — 切换当前简历**
 
-1. 点击左侧「工作台」
-2. 查看简历数量、岗位数量、报告数量等实时统计
+1. 点击左侧「简历工作区」
+2. 在「我的简历」里选择另一份简历并设为当前
+3. 进入岗位匹配、简历润色或模拟面试时，页面会默认使用当前简历；中途也可以在顶部选择器或页面选择框切换
 
 **Step 7 — 模拟面试**
 
@@ -139,8 +141,9 @@ cd frontend && npm run dev
 ### 7. 验证
 
 - 打开 http://localhost:5173 可以看到中文页面
-- 左侧导航可切换工作台、简历分析、岗位匹配等 8 个核心页面
-- 工作台展示真实数据统计（简历数、岗位数、报告数）
+- 登录后默认进入「简历工作区」，旧 `/dashboard` 会自动跳转到 `/resumes`
+- 左侧导航可切换简历工作区、上传/分析、岗位匹配等核心页面
+- 顶部「当前简历」选择器可在任意业务页切换当前处理简历
 - 设置页可查看模型配置状态和测试连接
 - 运行 `cd frontend && npm run build` 验证前端编译
 - 运行 `cd backend && DEEPSEEK_API_KEY= USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（49 个）

@@ -14,6 +14,9 @@ from app.api.deps import get_current_user_id, get_db
 from app.models.resume import Resume
 from app.schemas.resume import ResumeCreate, ResumeListItem, ResumeRead
 from app.services.resume_file_parser import ResumeFileParseError, extract_resume_text
+from app.services.resume_quick_parser import quick_parse_resume
+from app.services.resume_schema_normalizer import normalize_resume_schema
+from app.services.resume_text_cleaner import clean_resume_text
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/resumes", tags=["resumes"])
@@ -21,16 +24,19 @@ router = APIRouter(prefix="/api/resumes", tags=["resumes"])
 
 @router.post("", response_model=ResumeRead, status_code=201)
 def create_resume(body: ResumeCreate, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    raw_text = clean_resume_text(body.raw_text or "")
     existing = db.query(Resume).filter(
         Resume.user_id == user_id,
         Resume.title == body.title,
-        Resume.raw_text == (body.raw_text or ""),
+        Resume.raw_text == raw_text,
         Resume.deleted_at.is_(None),
     ).first()
     if existing:
         return existing
 
-    resume = Resume(user_id=user_id, **body.model_dump())
+    payload = body.model_dump()
+    payload["raw_text"] = raw_text
+    resume = Resume(user_id=user_id, **payload)
     db.add(resume)
     db.commit()
     db.refresh(resume)
@@ -47,7 +53,7 @@ async def upload_resume(
     filename = file.filename or "resume"
     content = await file.read()
     try:
-        raw_text = extract_resume_text(filename, content)
+        raw_text = clean_resume_text(extract_resume_text(filename, content))
     except ResumeFileParseError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
@@ -124,29 +130,48 @@ def parse_resume(resume_id: str, user_id: str = Depends(get_current_user_id), db
         db.refresh(resume)
         return resume
 
-    from app.core.config import settings
-    if not settings.DEEPSEEK_API_KEY:
-        raise HTTPException(status_code=422, detail="未配置 DEEPSEEK_API_KEY，请配置后重试")
-
-    resume.parse_status = "processing"
+    # Step 1: Quick parse (no LLM, always succeeds)
+    cleaned_text = clean_resume_text(resume.raw_text or "")
+    quick_structured = normalize_resume_schema(quick_parse_resume(cleaned_text))
+    resume.structured_json = quick_structured
+    resume.parse_status = "quick_succeeded"
+    resume.parse_warnings = None
     db.commit()
 
+    from app.core.config import settings
+    if not settings.DEEPSEEK_API_KEY:
+        resume.parse_warnings = {"warning": "未配置 DEEPSEEK_API_KEY，当前为快速解析结果，配置后可进行 AI 精修"}
+        db.commit()
+        db.refresh(resume)
+        return resume
+
+    # Step 2: Try AI refinement
     try:
         loader = PromptLoader()
-        messages = loader.render_messages("resume_parse", "v1", resume_text=resume.raw_text)
+        messages = loader.render_messages("resume_parse", "v1", resume_text=cleaned_text)
         runtime = RuntimeContext()
         provider = runtime.llm_provider
         if not provider:
             raise ValueError("LLM provider not available")
-        resp = provider.chat_sync(messages, temperature=0.2, response_format={"type": "json_object"})
-        content = resp["choices"][0]["message"]["content"]
-        structured = json.loads(content)
-        resume.structured_json = structured
+        resp = provider.chat_sync(
+            messages, temperature=0.2,
+            response_format={"type": "json_object"},
+            max_tokens=2500,
+        )
+        content = resp["choices"][0]["message"]["content"] or ""
+        if not content.strip():
+            raise ValueError("LLM returned empty content")
+        ai_structured = normalize_resume_schema(json.loads(content))
+        resume.structured_json = ai_structured
         resume.parse_status = "succeeded"
+        resume.parse_warnings = None
     except Exception as e:
-        logger.error("parse_resume failed: %s", e)
-        resume.parse_status = "failed"
-        resume.parse_warnings = {"error": str(e)[:500]}
+        logger.error("parse_resume AI refine failed: %s", e)
+        # Keep quick_succeeded with AI failure warning
+        resume.parse_warnings = {
+            "warning": f"AI 精修失败，当前为快速解析结果: {str(e)[:200]}",
+            "quick_succeeded": True,
+        }
 
     db.commit()
     db.refresh(resume)

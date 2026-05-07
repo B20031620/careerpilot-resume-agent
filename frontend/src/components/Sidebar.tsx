@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router-dom'
 
 const navItems = [
-  { to: '/dashboard', icon: 'dashboard', label: '工作台' },
-  { to: '/resume-analysis', icon: 'analytics', label: '简历分析' },
+  { to: '/resumes', icon: 'folder_managed', label: '简历工作区' },
+  { to: '/resume-analysis', icon: 'upload_file', label: '上传/分析' },
   { to: '/job-match', icon: 'target', label: '岗位匹配' },
   { to: '/resume-polish', icon: 'edit_note', label: '简历润色' },
   { to: '/project-story', icon: 'package_2', label: '项目包装' },
@@ -66,10 +66,10 @@ export default function Sidebar() {
           <span className="material-symbols-outlined">settings</span>
           <span className="font-body-md text-body-md">设置</span>
         </NavLink>
-        <button className="mt-2 w-full py-2 px-4 rounded bg-primary text-on-primary font-status text-status hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+        <NavLink to="/resume-analysis" className="mt-2 w-full py-2 px-4 rounded bg-primary text-on-primary font-status text-status hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
           <span className="material-symbols-outlined text-sm">add</span>
-          新建任务
-        </button>
+          上传简历
+        </NavLink>
       </div>
     </nav>
   )

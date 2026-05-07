@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_MODEL: str = "deepseek-v4-pro"
     JWT_SECRET: str = "careerpilot-dev-secret-change-in-production"
+    LLM_TIMEOUT_SECONDS: int = 90
+    LLM_MAX_RETRIES: int = 0
 
     model_config = SettingsConfigDict(
         env_file=(PROJECT_ROOT / ".env", BACKEND_ROOT / ".env"),

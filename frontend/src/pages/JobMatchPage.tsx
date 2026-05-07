@@ -3,6 +3,7 @@ import { ApiError } from '../api/client'
 import { listResumes, type ResumeListItem } from '../api/resumes'
 import { createJob } from '../api/jobs'
 import { createMatch, type MatchReportDetail } from '../api/matches'
+import { getCurrentResumeId, onCurrentResumeChange, setCurrentResumeId } from '../utils/currentResume'
 
 export default function JobMatchPage() {
   const [resumes, setResumes] = useState<ResumeListItem[]>([])
@@ -15,7 +16,17 @@ export default function JobMatchPage() {
   const [report, setReport] = useState<MatchReportDetail | null>(null)
 
   useEffect(() => {
-    listResumes().then(setResumes).catch(() => {})
+    listResumes().then((data) => {
+      setResumes(data)
+      const current = getCurrentResumeId()
+      if (current && data.some((resume) => resume.id === current)) {
+        setSelectedResumeId(current)
+      } else if (data[0]) {
+        setCurrentResumeId(data[0].id)
+        setSelectedResumeId(data[0].id)
+      }
+    }).catch(() => {})
+    return onCurrentResumeChange(setSelectedResumeId)
   }, [])
 
   const handleMatch = async () => {
@@ -51,12 +62,15 @@ export default function JobMatchPage() {
           <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm">
             <h3 className="font-h3 text-h3 font-semibold text-text-primary mb-4">已选简历</h3>
             {resumes.length === 0 ? (
-              <p className="font-body-sm text-on-surface-variant mb-4">暂无简历，请先在「简历分析」页面创建</p>
+              <p className="font-body-sm text-on-surface-variant mb-4">暂无简历，请先在「上传/分析」页面创建</p>
             ) : (
               <select
                 className="w-full px-3 py-2 border border-border-subtle rounded-lg font-body-md text-text-primary bg-surface focus:outline-none focus:border-agent-accent mb-4"
                 value={selectedResumeId}
-                onChange={(e) => setSelectedResumeId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedResumeId(e.target.value)
+                  setCurrentResumeId(e.target.value)
+                }}
               >
                 <option value="">-- 请选择简历 --</option>
                 {resumes.map((r) => (
@@ -100,7 +114,7 @@ export default function JobMatchPage() {
               {loading ? '正在分析...' : '开始深度匹配'}
             </button>
             <p className="font-body-sm text-on-surface-variant mt-2 text-center">
-              提示：请使用 USE_MOCK_LLM=true 启动后端以在本地演示匹配
+              此处默认使用顶部选择的当前简历，您也可以临时切换另一份简历。
             </p>
           </div>
         </div>

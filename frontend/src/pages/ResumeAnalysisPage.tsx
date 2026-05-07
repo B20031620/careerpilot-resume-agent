@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { ApiError } from '../api/client'
 import { createResume, parseResume, uploadResumeFile, type ResumeRead } from '../api/resumes'
+import { setCurrentResumeId } from '../utils/currentResume'
 
 export default function ResumeAnalysisPage() {
   const [title, setTitle] = useState('')
@@ -20,6 +21,7 @@ export default function ResumeAnalysisPage() {
 
   const runParse = async (resume: ResumeRead) => {
     setResult(resume)
+    setCurrentResumeId(resume.id)
     setLoadingLabel('正在进行 AI 结构化解析...')
     const parsed = await parseResume(resume.id)
     setResult(parsed)
@@ -103,6 +105,36 @@ export default function ResumeAnalysisPage() {
   const projects = Array.isArray(structured?.projects) ? structured.projects : []
   const experiences = Array.isArray(structured?.work_experiences) ? structured.work_experiences : []
   const parseError = result?.parse_warnings?.error ? String(result.parse_warnings.error) : ''
+  const parseWarning = result?.parse_warnings?.warning ? String(result.parse_warnings.warning) : ''
+  const parseSucceeded = result?.parse_status === 'succeeded' || result?.parse_status === 'quick_succeeded'
+  const parseStatusText = result?.parse_status === 'succeeded'
+    ? 'AI 深度解析完成'
+    : result?.parse_status === 'quick_succeeded'
+      ? '本地初步解析完成'
+      : result?.parse_status === 'failed'
+        ? '简历解析失败'
+        : '简历已创建，等待解析'
+
+  const handleAiRefine = async () => {
+    if (!result || busyRef.current) return
+    busyRef.current = true
+    setLoading(true)
+    setLoadingLabel('正在进行 AI 精修...')
+    try {
+      const parsed = await parseResume(result.id)
+      setResult(parsed)
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setError(e.detail)
+      } else {
+        setError('AI 精修失败，请检查模型配置或后端服务。')
+      }
+    } finally {
+      busyRef.current = false
+      setLoading(false)
+      setLoadingLabel('')
+    }
+  }
 
   return (
     <div className="max-w-container-max-width mx-auto w-full">
@@ -209,21 +241,32 @@ export default function ResumeAnalysisPage() {
           {result ? (
             <>
               {/* Status Bar */}
-              <div className={`${result.parse_status === 'failed' ? 'bg-risk-high/10 border-risk-high/30' : result.parse_status === 'succeeded' ? 'bg-agent-running/30 border-agent-accent/20' : 'bg-risk-medium/10 border-risk-medium/30'} border rounded-xl p-4 flex items-center justify-between`}>
+              <div className={`${result.parse_status === 'failed' ? 'bg-risk-high/10 border-risk-high/30' : parseSucceeded ? 'bg-agent-running/30 border-agent-accent/20' : 'bg-risk-medium/10 border-risk-medium/30'} border rounded-xl p-4 flex items-center justify-between`}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-agent-accent/20 flex items-center justify-center text-agent-accent">
                     <span className="material-symbols-outlined text-lg">
-                      {result.parse_status === 'failed' ? 'error' : result.parse_status === 'succeeded' ? 'check' : 'hourglass_top'}
+                      {result.parse_status === 'failed' ? 'error' : parseSucceeded ? 'check' : 'hourglass_top'}
                     </span>
                   </div>
                   <div>
                     <p className="font-body-md text-text-primary font-medium">
-                      {result.parse_status === 'succeeded' ? '简历解析完成' : result.parse_status === 'failed' ? '简历解析失败' : '简历已创建，等待解析'}
+                      {parseStatusText}
                     </p>
                     <p className="font-body-sm text-text-secondary">ID: {result.id}</p>
                     {parseError && <p className="font-body-sm text-risk-high mt-1">{parseError}</p>}
+                    {parseWarning && <p className="font-body-sm text-risk-medium mt-1">{parseWarning}</p>}
                   </div>
                 </div>
+                {result.parse_status === 'quick_succeeded' && (
+                  <button
+                    onClick={handleAiRefine}
+                    disabled={loading}
+                    className="bg-primary text-on-primary font-body-md px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-on-primary-fixed-variant transition-colors disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                    重新 AI 精修
+                  </button>
+                )}
               </div>
 
               {/* Structured Data Grid */}
@@ -254,7 +297,7 @@ export default function ResumeAnalysisPage() {
                     </div>
                   ))}
                 </div>
-                {result.parse_status === 'succeeded' && structured && (
+                {parseSucceeded && structured && (
                   <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="border border-border-subtle rounded-lg p-4 bg-surface">
                       <h4 className="font-body-md font-medium text-text-primary mb-3">识别技能</h4>

@@ -3,6 +3,7 @@ import { listResumes, type ResumeListItem } from '../api/resumes'
 import { listJobs, type JobListItem } from '../api/jobs'
 import { createMatch, type MatchReportDetail } from '../api/matches'
 import { ApiError } from '../api/client'
+import { getCurrentResumeId, onCurrentResumeChange, setCurrentResumeId } from '../utils/currentResume'
 
 export default function ResumePolishPage() {
   const [resumes, setResumes] = useState<ResumeListItem[]>([])
@@ -14,8 +15,18 @@ export default function ResumePolishPage() {
   const [report, setReport] = useState<MatchReportDetail | null>(null)
 
   useEffect(() => {
-    listResumes().then(setResumes).catch(() => {})
+    listResumes().then((data) => {
+      setResumes(data)
+      const current = getCurrentResumeId()
+      if (current && data.some((resume) => resume.id === current)) {
+        setSelectedResumeId(current)
+      } else if (data[0]) {
+        setCurrentResumeId(data[0].id)
+        setSelectedResumeId(data[0].id)
+      }
+    }).catch(() => {})
     listJobs().then(setJobs).catch(() => {})
+    return onCurrentResumeChange(setSelectedResumeId)
   }, [])
 
   const handleGenerate = async () => {
@@ -58,7 +69,10 @@ export default function ResumePolishPage() {
             <select
               className="w-full px-3 py-2 border border-border-subtle rounded-lg font-body-md text-text-primary bg-surface focus:outline-none focus:border-agent-accent"
               value={selectedResumeId}
-              onChange={(e) => setSelectedResumeId(e.target.value)}
+              onChange={(e) => {
+                setSelectedResumeId(e.target.value)
+                setCurrentResumeId(e.target.value)
+              }}
             >
               <option value="">-- 请选择 --</option>
               {resumes.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
