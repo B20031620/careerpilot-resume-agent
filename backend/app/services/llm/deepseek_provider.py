@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterator
 
 from openai import AsyncOpenAI, OpenAI
 
@@ -78,6 +78,29 @@ class DeepSeekProvider:
 
         response = self.sync_client.chat.completions.create(**kwargs)
         return response.model_dump()
+
+    def chat_stream_sync(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        model: str | None = None,
+        temperature: float = 0.4,
+        max_tokens: int | None = None,
+    ) -> Iterator[str]:
+        kwargs: dict[str, Any] = {
+            "model": model or self.default_model,
+            "messages": messages,
+            "temperature": temperature,
+            "stream": True,
+        }
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
+
+        stream = self.sync_client.chat.completions.create(**kwargs)
+        for chunk in stream:
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta and delta.content:
+                yield delta.content
 
     async def test_connection(self) -> dict[str, Any]:
         if not self.api_key:

@@ -9,8 +9,10 @@ from app.api.routes_interviews import router as interviews_router
 from app.api.routes_jobs import router as jobs_router
 from app.api.routes_matches import router as matches_router
 from app.api.routes_reports import router as reports_router
+from app.api.routes_polish import router as polish_router
 from app.api.routes_resumes import router as resumes_router
 from app.api.routes_settings import router as settings_router
+from app.api.routes_workplace_chat import router as workplace_chat_router
 from app.db.base import Base
 from app.db.migration import run_migrations
 from app.db.session import engine
@@ -24,6 +26,7 @@ async def lifespan(app: FastAPI):
     import app.models.interview  # noqa: F401
     import app.models.agent_run  # noqa: F401
     import app.models.user  # noqa: F401
+    import app.models.workplace_chat  # noqa: F401
     Base.metadata.create_all(bind=engine)
     run_migrations(engine)
     yield
@@ -43,7 +46,9 @@ app.include_router(health_router)
 app.include_router(settings_router)
 app.include_router(auth_router)
 app.include_router(resumes_router)
+app.include_router(polish_router)
 app.include_router(jobs_router)
 app.include_router(reports_router)
 app.include_router(matches_router)
 app.include_router(interviews_router)
+app.include_router(workplace_chat_router)

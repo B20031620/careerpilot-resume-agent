@@ -14,455 +14,442 @@
 - 执行过程可观测。
 - 后续可从单机部署演进到云部署。
 
-## 2. 推荐技术栈
+## 2. AI 使用方式总览
 
-### 2.1 MVP 技术栈
+本项目在多处使用了 AI 能力，不是简单"调一个 LLM"，而是根据不同场景匹配不同的 AI 策略：
 
-| 层 | 技术 |
-| --- | --- |
-| 前端 | React + Vite 或 Next.js |
-| 后端 | FastAPI |
-| Agent 编排 | LangGraph |
-| LLM 集成 | LangChain |
-| 数据库 | SQLite |
-| 向量库 | Chroma |
-| 文件解析 | Python 文本解析，第二阶段加入 PDF/DOCX |
-| 日志 | Python logging + 结构化 JSON 日志 |
-| 本地部署 | Docker Compose |
+### 2.1 用到的 AI 模型
 
-### 2.2 生产化技术栈
+| 模型 | 用途 | 调用方式 |
+| --- | --- | --- |
+| DeepSeek v4-pro | LLM：简历解析、面试出题/评估/报告、简历润色、职场沟通 | OpenAI 兼容 API（同步 + 流式） |
+| 豆包 Doubao embedding | Embedding：文本向量化，支撑 RAG 检索 | 火山方舟 multimodal embedding API |
 
-| 层 | 技术 |
-| --- | --- |
-| 前端 | Next.js |
-| 后端 | FastAPI |
-| Agent 编排 | LangGraph |
-| 模型接入 | 默认 DeepSeek，使用 OpenAI 兼容接口；预留 OpenAI、Qwen、Ollama 等 Provider 抽象 |
-| 数据库 | PostgreSQL |
-| 向量库 | pgvector 或 Qdrant |
-| 文件存储 | S3 或 MinIO |
-| 缓存 | Redis |
-| 任务队列 | Celery、RQ 或 Dramatiq |
-| 观测 | LangSmith + OpenTelemetry |
-| 部署 | Docker Compose、云服务器、Kubernetes 可选 |
+### 2.2 LLM 使用场景
 
-## 3. 总体架构图
+**简历解析**（`POST /api/resumes/{id}/parse`）：
+- 快速解析：无 LLM，纯规则提取基本信息
+- AI 精修：将原始简历文本 + 快速解析结果发给 DeepSeek，要求按结构化 schema 输出 JSON
+- 失败兜底：AI 精修失败时保留快速解析结果
+
+**模拟面试**（`POST /api/interviews`）：
+- 出题：DeepSeek 根据用户简历（RAG 检索相关经历）+ 已问话题 + 难度级别，生成有针对性的问题
+- 评估：DeepSeek 对回答评分，输出优势/改进/风险，返回 JSON
+- 分类：根据评分将回答分为 weak/medium/strong 三档
+- 策略决策：weak → 降低难度追问（probe_easier），medium → 同话题深挖（follow_up_detail），strong → 换话题提升难度（switch_topic_harder）
+- 报告：DeepSeek 汇总所有轮次评估，生成综合报告
+
+**简历润色**（`POST /api/resumes/{id}/polish`）：
+- 分析 + 生成建议：DeepSeek 一次调用输出所有润色建议，每条标注 risk_level（low/medium/high）
+- 风险审查（LLM-as-Judge）：只对 high 风险建议走二次 LLM 验证，过滤"编造经历"等不合规内容
+- 成本控制：90% 的 low/medium 建议跳过审查，节省 token
+
+**职场沟通**（`POST /api/workplace-chat/{id}/stream`）：
+- DeepSeek 流式生成沟通草稿，支持 7 种职场场景和 4 种语气
+- 输出中嵌入 `<<<DRAFT>>><<<END_DRAFT>>>` 和 `<<<PITFALL>>><<<END_PITFALL>>>` 标记，解析为正文+避坑提示
+
+### 2.3 Embedding + RAG 使用场景
+
+**分层检索策略**（核心巧思）：不同 agent 用不同的检索策略，而不是"一坨文本拼进去"。
+
+|| Agent | 检索策略 | 检索内容 | 作用 |
+|| --- | --- | --- | --- |
+|| 面试出题 | 按技能/项目维度 | 简历经历片段（experience/project） | 出针对用户真实经历的题，不是泛泛而问 |
+|| 润色分析 | 按表述相似度 | 历史润色建议（polish_suggestion） | 保持建议风格一致 |
+|| 职场沟通 | 按职位身份 | 简历 profile + experience | 生成贴合用户身份的草稿 |
+
+**文本分段入库策略**：
+- 工作经历：公司 + 职位 + 时间 + 职责
+- 项目经历：项目名 + 技术栈 + 描述 + 成果
+- 技能标签：技能名 + 分类 + 证据
+- 基本信息：姓名 + 邮箱 + 教育
+
+每种分段带 metadata（doc_type, section_type, resume_id），方便按条件过滤检索。
+
+### 2.4 LangGraph Agent 工作流
+
+**面试 Agent（自适应循环图）**：
+```
+init_interview → generate_question → [等待用户回答]
+  → evaluate_answer → classify_answer → decide_strategy
+       ↓                    ↓                  ↓
+    score/评估        weak/medium/strong    三分支路由
+                                                  ↓
+  probe_easier / follow_up_detail / switch_topic_harder
+       ↓
+  next_question → generate_question（循环）或 final_report
+```
+
+设计要点：
+- 不是简单的 DAG，而是根据回答质量动态调整策略的循环图
+- `interrupt_before=['evaluate_answer']` 实现暂停等待用户输入
+- SqliteSaver checkpoint 支持暂停/恢复/重放（"时间旅行"）
+- 连续 2 次 weak → 提前终止出报告（不浪费时间）
+
+**润色 Agent（5 节点图）**：
+```
+load_resume → analyze_issues → generate_suggestions → risk_gate → format_report
+                                                           ↓              ↑
+                                                     validate_risks ──────┘
+                                                      （仅 high risk 走这条）
+```
+
+设计要点：
+- risk_gate 条件分支：按风险等级分流，控制 LLM 调用成本
+- validate_risks：LLM-as-Judge 二次审查
+
+## 3. 推荐技术栈
+
+### 3.1 当前技术栈
+
+| 层 | 技术 | 说明 |
+| --- | --- | --- |
+| 前端 | React 18 + Vite + TypeScript | SPA，Vite 代理转发 /api 到后端 |
+| 后端 | FastAPI | Python 同步路由 + uvicorn |
+| Agent 编排 | LangGraph 0.2+ | 面试循环图 + 润色 DAG，含 checkpoint |
+| LLM | DeepSeek v4-pro | OpenAI 兼容接口（同步 + 流式） |
+| Embedding | 豆包 Doubao embedding | 火山方舟 multimodal API，2048 维向量 |
+| 向量库 | ChromaDB | SQLite 级别轻量向量库，本地持久化 |
+| 数据库 | SQLite | MVP 阶段，通过 SQLAlchemy ORM 访问 |
+| 文件解析 | python-docx + 文本解析 | 支持 .docx .doc .txt .md |
+| 日志 | Python logging | 结构化日志 |
+| 观测 | LangSmith（可选） | 通过环境变量开关控制 |
+
+### 3.2 生产化演进
+
+| 层 | 当前 | 生产化 |
+| --- | --- | --- |
+| 向量库 | ChromaDB | pgvector 或 Qdrant |
+| 数据库 | SQLite | PostgreSQL |
+| 缓存 | 无 | Redis |
+| 任务队列 | 同步处理 | Celery / Dramatiq |
+| 文件存储 | 本地 | S3 / MinIO |
+| 部署 | 本地 uvicorn | Docker Compose / K8s |
+
+## 4. 总体架构图
 
 ```mermaid
 flowchart LR
-    U["用户浏览器"] --> FE["Frontend: React/Next.js"]
-    FE --> API["Backend API: FastAPI"]
+    U["用户浏览器"] --> FE["Frontend: React + Vite"]
+    FE -->|"/api 代理"| API["Backend API: FastAPI"]
 
-    API --> AUTH["Auth Service"]
     API --> RESUME["Resume Service"]
-    API --> JD["JD Service"]
-    API --> REPORT["Report Service"]
-    API --> AGENT["Agent Service"]
+    API --> INTERVIEW["Interview Service"]
+    API --> POLISH["Polish Service"]
+    API --> CHAT["Workplace Chat Service"]
 
-    AGENT --> LG["LangGraph Workflows"]
-    LG --> LC["LangChain Model/Tool Layer"]
-    LC --> LLM["LLM Providers"]
-    LC --> TOOLS["Tools: Parser/Retriever/Scorer"]
+    INTERVIEW --> GRAPH["LangGraph (Interview Graph)"]
+    POLISH --> PGRAPH["LangGraph (Polish Graph)"]
 
-    API --> DB[("PostgreSQL/SQLite")]
-    AGENT --> CKPT[("Graph Checkpointer")]
-    TOOLS --> VDB[("Vector DB")]
-    RESUME --> OBJ[("Object Storage")]
-    AGENT --> OBS["LangSmith/Logs"]
+    GRAPH --> CHECKPOINT[("SqliteSaver Checkpoints")]
+    GRAPH --> LLM["DeepSeek v4-pro"]
+    PGRAPH --> LLM
+    CHAT --> LLM
+
+    GRAPH --> RAG["RAG Service"]
+    PGRAPH --> RAG
+    CHAT --> RAG
+    RESUME --> RAG
+
+    RAG --> EMBED["Doubao Embedding API"]
+    RAG --> VDB[("ChromaDB")]
+
+    API --> DB[("SQLite")]
 ```
 
-## 4. 前后端分离设计
+## 5. 前后端分离设计
 
-### 4.1 前端职责
+### 5.1 前端职责
 
 前端只负责：
-
 - 页面路由。
 - 用户输入。
-- 文件上传。
+- 文件上传（DOCX/TXT/MD）。
 - 展示 Agent 执行进度。
-- 展示结构化报告。
+- 展示结构化报告（简历解析、润色建议、面试报告）。
 - 展示历史记录。
 - 管理用户交互状态。
 
 前端不负责：
-
 - Prompt 拼接。
 - LLM 调用。
 - 复杂业务判断。
 - 数据库直接访问。
 - Agent 状态管理。
 
-### 4.2 后端职责
+### 5.2 后端职责
 
 后端负责：
-
-- API 鉴权。
-- 文件处理。
+- API 鉴权（JWT）。
+- 文件处理（DOCX 文本提取）。
 - 数据库读写。
 - Agent 任务启动。
 - Agent 结果保存。
 - 报告查询。
 - 脱敏和日志。
 
-### 4.3 Agent Service 职责
+### 5.3 Agent Service 职责
 
 Agent Service 负责：
-
 - 加载对应 Graph。
 - 管理 Graph State。
 - 调用 LLM。
-- 调用工具。
-- 处理中断和恢复。
+- 调用 Tool（load_resume_tool, search_history_tool, save_report_tool）。
+- 通过 checkpoint 处理中断和恢复。
 - 保存执行记录。
 - 输出结构化结果。
 
-## 5. 推荐目录结构
+## 6. 实际目录结构
 
 ```text
 careerpilot-resume-agent/
   frontend/
     src/
       pages/
+        ResumeAnalysisPage.tsx     # 简历上传 + 列表 + 解析展示
+        ResumePolishPage.tsx       # 简历润色
+        MockInterviewPage.tsx       # 模拟面试（三栏布局）
+        WorkplaceHelpPage.tsx      # 职场沟通
       components/
-      features/
-        resume/
-        jd/
-        match/
-        interview/
-        workplace/
+        Sidebar.tsx / Topbar.tsx / Card.tsx / ...
       api/
-      types/
-      stores/
+        client.ts                 # fetch 封装（含 JWT 鉴权）
+        resumes.ts / interviews.ts / polish.ts / workplaceChat.ts
   backend/
     app/
       main.py
+      core/
+        config.py                 # pydantic Settings（LLM + Embedding + LangSmith）
+        security.py               # JWT 签发/校验
       api/
-        routes_resume.py
-        routes_jd.py
-        routes_match.py
-        routes_interview.py
-        routes_workplace.py
-        routes_reports.py
+        routes_resumes.py         # 简历 CRUD + 上传 + 解析
+        routes_interviews.py      # 面试会话 + 答题 + 结束
+        routes_polish.py          # 简历润色（调用 Polish Graph）
+        routes_workplace_chat.py  # 职场沟通（SSE 流式）
+        routes_settings.py        # 模型配置状态
+        deps.py                   # 依赖注入（get_db, get_current_user_id）
       agents/
         base/
-        resume_parse/
-        jd_analysis/
-        resume_match/
-        resume_polish/
-        project_story/
+          runtime.py              # RuntimeContext + PromptLoader
         mock_interview/
-        workplace_help/
+          graph.py                # 自适应循环图 + checkpoint 编译
+          nodes.py                # 节点实现（含 RAG 检索）
+          state.py                # InterviewState
+        resume_polish/
+          graph.py                # 5 节点润色图
+          nodes.py                # 含 risk_gate + validate_risks
+          state.py                # PolishState
+        resume_match/
+          graph.py / nodes.py / state.py
+        tools.py                  # 共享 Tool 定义
       prompts/
         resume_parse/v1.yaml
-        jd_analysis/v1.yaml
-        resume_match/v1.yaml
         resume_polish/v1.yaml
-        project_story/v1.yaml
-        mock_interview/v1.yaml
-        workplace_help/v1.yaml
-      schemas/
-        resume.py
-        jd.py
-        match.py
-        interview.py
-        workplace.py
+        mock_interview/
+          v1_generate_question.yaml
+          v1_evaluate_answer.yaml
+          v1_final_report.yaml
+        workplace_chat/v1.yaml
       services/
-        llm_provider.py
-        file_parser.py
-        vector_store.py
-        report_service.py
-        privacy_service.py
+        llm/
+          deepseek_provider.py    # DeepSeek Provider（OpenAI SDK）
+          factory.py
+        embedding.py              # 豆包 Embedding API 封装
+        vector_store.py           # ChromaDB 封装（add/query/delete）
+        rag_service.py            # 分层检索策略 + 简历入库
+        resume_file_parser.py     # DOCX/TXT/MD 文本提取
+        resume_quick_parser.py    # 快速解析（无 LLM）
+        resume_schema_normalizer.py
+        resume_text_cleaner.py
       models/
-        user.py
-        resume.py
-        jd.py
-        report.py
-        interview.py
-        agent_run.py
+        resume.py / interview.py / job_description.py / workplace_chat.py
       db/
         session.py
-        migrations/
       tests/
   docs/
-  docker-compose.yml
-  README.md
-  .env.example
 ```
 
-## 6. API 设计
+## 7. API 设计
 
-### 6.1 简历接口
+### 7.1 简历接口
 
 ```text
-POST   /api/resumes
-GET    /api/resumes
-GET    /api/resumes/{resume_id}
-DELETE /api/resumes/{resume_id}
-POST   /api/resumes/{resume_id}/parse
+POST   /api/resumes                      # 创建（纯文本）
+POST   /api/resumes/upload               # 上传文件（DOCX/TXT/MD）
+GET    /api/resumes                      # 列表
+GET    /api/resumes/{resume_id}          # 详情（含 structured_json）
+DELETE /api/resumes/{resume_id}          # 软删除
+POST   /api/resumes/{resume_id}/parse    # 触发解析（快速 + AI 精修）
+POST   /api/resumes/{resume_id}/polish   # 简历润色
 ```
 
-### 6.2 JD 接口
+### 7.2 模拟面试接口
 
 ```text
-POST   /api/jobs
-GET    /api/jobs
-GET    /api/jobs/{jd_id}
-DELETE /api/jobs/{jd_id}
-POST   /api/jobs/{jd_id}/analyze
+POST   /api/interviews                       # 创建面试会话，返回首题
+GET    /api/interviews/{session_id}          # 获取会话状态
+POST   /api/interviews/{session_id}/answer   # 提交答案，返回评估+下一题
+POST   /api/interviews/{session_id}/finish   # 提前结束，生成报告
 ```
 
-### 6.3 匹配分析接口
+### 7.3 职场沟通接口
 
 ```text
-POST /api/matches
-GET  /api/matches/{match_report_id}
-GET  /api/matches
+GET    /api/workplace-chat                   # 会话列表
+POST   /api/workplace-chat                   # 创建会话
+GET    /api/workplace-chat/{session_id}      # 获取会话详情
+POST   /api/workplace-chat/{session_id}/stream       # SSE 流式生成回复
+DELETE /api/workplace-chat/{session_id}      # 删除会话
 ```
 
-请求示例：
+## 8. Agent 与 API 的交互模式
 
-```json
-{
-  "resume_id": "uuid",
-  "jd_id": "uuid",
-  "options": {
-    "target_level": "junior",
-    "language_style": "professional"
-  }
-}
-```
-
-### 6.4 简历润色接口
-
-```text
-POST /api/polish
-POST /api/polish/{suggestion_id}/accept
-POST /api/polish/{suggestion_id}/reject
-POST /api/polish/{suggestion_id}/edit
-```
-
-### 6.5 模拟面试接口
-
-```text
-POST /api/interviews
-GET  /api/interviews/{session_id}
-POST /api/interviews/{session_id}/answer
-POST /api/interviews/{session_id}/finish
-GET  /api/interviews/{session_id}/report
-```
-
-### 6.6 职场沟通接口
-
-```text
-POST /api/workplace/help
-GET  /api/workplace/requests
-GET  /api/workplace/requests/{request_id}
-```
-
-### 6.7 报告接口
-
-```text
-GET    /api/reports
-GET    /api/reports/{report_id}
-DELETE /api/reports/{report_id}
-```
-
-## 7. Agent 与 API 的交互模式
-
-### 7.1 同步模式
-
-适合短任务：
-
-- JD 分析。
-- 职场沟通话术。
-- 单条简历润色。
-
-流程：
+### 8.1 同步模式（简历解析、润色、职场沟通）
 
 ```mermaid
 sequenceDiagram
     participant FE as Frontend
     participant API as FastAPI
-    participant AG as Agent Service
+    participant AG as Agent Service / Graph
+    participant LLM as LLM API
     participant DB as Database
 
-    FE->>API: POST /api/jobs/{id}/analyze
-    API->>AG: run_jd_analysis_graph()
+    FE->>API: POST /api/resumes/{id}/parse
+    API->>AG: run graph / direct LLM call
+    AG->>LLM: chat_sync(prompt, response_format=json)
+    LLM-->>AG: structured JSON
     AG->>DB: save result
     AG-->>API: result
-    API-->>FE: analysis result
+    API-->>FE: ResumeRead (含 structured_json)
 ```
 
-### 7.2 异步模式
+### 8.2 中断-恢复模式（模拟面试）
 
-适合长任务：
-
-- 简历/JD 完整匹配。
-- 模拟面试。
-- 多版本简历生成。
-
-流程：
+面试 agent 是交互式循环图，需要等待用户输入。通过 LangGraph 的 `interrupt_before` + `SqliteSaver` checkpoint 实现：
 
 ```mermaid
 sequenceDiagram
     participant FE as Frontend
     participant API as FastAPI
-    participant AG as Agent Service
-    participant DB as Database
+    participant GRAPH as LangGraph (compiled)
+    participant CKPT as SqliteSaver
+    participant LLM as DeepSeek
 
-    FE->>API: POST /api/matches
-    API->>DB: create agent_run
-    API-->>FE: run_id
-    FE->>API: GET /api/agent-runs/{run_id}/events
-    API->>AG: stream graph events
-    AG->>DB: save node outputs
-    API-->>FE: progress events
-    AG-->>DB: save final report
+    Note over FE,LLM: 创建面试
+    FE->>API: POST /api/interviews
+    API->>GRAPH: invoke(initial_state, thread_id)
+    GRAPH->>LLM: init + generate_question
+    GRAPH->>CKPT: save checkpoint (before evaluate_answer)
+    GRAPH-->>API: state (含 current_question)
+    API-->>FE: InterviewSessionResponse
+
+    Note over FE,LLM: 提交回答
+    FE->>API: POST /api/interviews/{id}/answer
+    API->>GRAPH: update_state(user_answer) + invoke(None, thread_id)
+    GRAPH->>CKPT: load checkpoint
+    GRAPH->>LLM: evaluate → classify → strategy → next_question
+    GRAPH->>CKPT: save checkpoint (before next evaluate_answer)
+    GRAPH-->>API: state (含 eval_score + next_question)
+    API-->>FE: InterviewSessionResponse
+
+    Note over FE,LLM: 循环直到 question_count_target 或提前终止
 ```
 
-MVP 可以先用同步模式，后续用 Server-Sent Events 或 WebSocket 展示 Agent 进度。
+### 8.3 流式模式（职场沟通）
 
-## 8. LangGraph 设计建议
+```mermaid
+sequenceDiagram
+    participant FE as Frontend
+    participant API as FastAPI
+    participant LLM as DeepSeek
 
-### 8.1 为什么使用 LangGraph
-
-这个项目有明显的状态流转：
-
-- 简历解析后才能做匹配。
-- 匹配报告生成后才能做润色建议。
-- 模拟面试需要多轮循环。
-- 高风险建议需要人工确认。
-- 长流程需要恢复。
-
-这些能力更适合用 Graph 表达，而不是把所有逻辑写进一个 prompt。
-
-### 8.2 Graph 状态示例
-
-```python
-class ResumeMatchState(TypedDict):
-    user_id: str
-    resume_id: str
-    jd_id: str
-    structured_resume: dict
-    job_profile: dict
-    skill_score: int
-    project_score: int
-    experience_score: int
-    expression_score: int
-    overall_score: int
-    strengths: list[dict]
-    weaknesses: list[dict]
-    missing_keywords: list[str]
-    polish_suggestions: list[dict]
-    risk_flags: list[dict]
-    final_report: dict
+    FE->>API: POST /api/workplace-chat/{id}/stream
+    API->>LLM: chat_stream_sync(prompt)
+    loop SSE events
+        LLM-->>API: token chunk
+        API-->>FE: event: token / data: {content}
+    end
+    API-->>FE: event: done
 ```
 
-### 8.3 Node 命名规范
+## 9. LangGraph 设计要点
 
-推荐：
+### 9.1 面试 Agent：自适应循环图
 
-- parse_resume
-- analyze_jd
-- align_capabilities
-- score_skills
-- score_projects
-- generate_suggestions
-- validate_risks
-- human_review
-- persist_report
+图不是简单的 DAG，而是根据回答质量动态调整的循环图：
 
-不要使用含义模糊的命名：
+- `classify_answer`：根据评分将回答分为 weak（<50）/ medium（50-74）/ strong（≥75）
+- `decide_strategy` 条件分支：
+  - weak → `probe_easier`（降低难度追问同一话题）
+  - medium → `follow_up_detail`（同话题追问细节）
+  - strong → `switch_topic_harder`（换话题出更难题）
+- 早期终止：连续 2 次 weak → 直接走 `final_report`
+- `interrupt_before=['evaluate_answer']` 让图在每个问题后暂停等待用户输入
+- `SqliteSaver` checkpoint 支持暂停/恢复/重放（"时间旅行"）
 
-- run_agent
-- process
-- step1
-- llm_call
+### 9.2 润色 Agent：风险分级图
 
-## 9. Prompt 管理
+- `risk_gate` 条件分支：按风险等级分流
+  - 有 high 风险建议 → 走 `validate_risks`（LLM-as-Judge）
+  - 全部 low/medium → 跳过验证直接 `format_report`
+- 成本控制：90% 的建议是措辞优化（低风险），不需要二次审查
 
-Prompt 必须从代码中分离。
+### 9.3 状态管理
 
-推荐格式：
+所有 Agent 图的状态用 `TypedDict` 定义，字段明确。图的节点函数签名统一为 `(state, runtime) -> dict`，返回部分状态更新，LangGraph 自动合并。
+
+## 10. Prompt 管理
+
+Prompt 从代码中分离为 YAML 文件：
 
 ```yaml
-name: resume_match
+name: interview_generate_question
 version: v1
-description: Analyze resume and JD matching.
+description: 根据简历和对话历史生成下一个面试问题
 system: |
-  你是一个专业的技术招聘顾问...
+  你是一位资深面试官...
 user_template: |
-  简历结构化信息：
-  {{ resume_profile }}
-
-  岗位画像：
-  {{ job_profile }}
-
-  请输出符合 schema 的 JSON。
-output_schema: MatchReport
+  面试类型: {{ interview_type }}
+  当前进度: 第 {{ current_index }}/{{ total_count }} 题
+  ...
 ```
 
 管理要求：
-
 - 每个 Prompt 有 name 和 version。
 - Prompt 修改需要记录 changelog。
 - 关键 Prompt 需要配测试样例。
 - 不要在代码里散落多份相似 Prompt。
 
-## 10. 模型 Provider 抽象
+## 11. 模型 Provider 抽象
 
-不要把模型调用写死。
+**LLM Provider（DeepSeek）**：
+- 使用 OpenAI Python SDK，兼容 `chat.completions.create` 接口
+- 支持同步（`chat_sync`）、异步（`chat`）、流式（`chat_stream_sync`）三种模式
+- 通过 `settings.DEEPSEEK_API_KEY/BASE_URL/MODEL` 配置
+- 运行时通过 `RuntimeContext.llm_provider` 获取，节点不直接依赖全局配置
 
-建议接口：
+**Embedding Provider（豆包）**：
+- 使用火山方舟 multimodal embedding API
+- OpenAI 兼容接口，通过 `httpx` 直接调用
+- 通过 `settings.DOUBAO_EMBEDDING_API_KEY/MODEL` 配置
 
-```python
-class LLMProvider:
-    def chat(self, messages: list[dict], schema: type | None = None) -> dict:
-        ...
+**可替换性**：切换 LLM 只需新建一个 Provider 类，切换 Embedding 只需改 `embedding.py`。
 
-    def stream(self, messages: list[dict]):
-        ...
-```
+## 12. 部署架构
 
-MVP 默认使用：
-
-- DeepSeek。
-- Base URL：https://api.deepseek.com
-- 默认模型：deepseek-v4-pro
-
-后续可以继续支持：
-
-- OpenAI。
-- Qwen。
-- 本地 Ollama。
-
-环境变量：
-
-```text
-LLM_PROVIDER=deepseek
-DEEPSEEK_API_KEY=...
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-v4-pro
-OPENAI_API_KEY=...
-QWEN_API_KEY=...
-```
-
-真实 API Key 只能写入本地 `.env`，不能写入 README、文档、代码或提交到 Git 仓库。
-
-## 11. 部署架构
-
-### 11.1 本地开发
+### 12.1 本地开发
 
 ```mermaid
 flowchart LR
-    FE["localhost:5173 Frontend"] --> API["localhost:8000 FastAPI"]
-    API --> DB[("SQLite")]
-    API --> VDB[("Chroma")]
-    API --> LLM["External LLM API"]
+    FE["localhost:5173 (Vite dev)"] -->|"proxy /api"| API["localhost:8000 (uvicorn --reload)"]
+    API --> DB[("SQLite (backend/data/)")]
+    API --> VDB[("ChromaDB (backend/data/chroma/)")]
+    API --> CHECKPOINT[("SqliteSaver (backend/data/checkpoints/)")]
+    API --> LLM["DeepSeek API (api.deepseek.com)"]
+    API --> EMBED["豆包 Embedding (ark.cn-beijing.volces.com)"]
 ```
 
-### 11.2 Docker Compose
+### 12.2 Docker Compose（规划中）
 
 ```mermaid
 flowchart LR
@@ -472,110 +459,44 @@ flowchart LR
     API --> REDIS[("Redis")]
     API --> QDRANT[("Qdrant")]
     API --> LLM["LLM Provider"]
+    API --> EMBED["Embedding Provider"]
 ```
 
-## 12. 可观测性
+## 13. 可观测性
 
-建议保留三类观测数据：
+### 13.1 应用日志
 
-### 12.1 应用日志
+Python logging 记录：API 请求、用户操作、任务状态、错误堆栈。
 
-记录：
+### 13.2 Agent 节点日志
 
-- API 请求。
-- 用户操作。
-- 任务状态。
-- 错误堆栈。
+每个 Graph Node 执行前后记录：Graph 名称、Node 名称、输入/输出摘要、耗时。
 
-### 12.2 Agent 节点日志
+### 13.3 LangSmith Trace（可选）
 
-记录：
-
-- Graph 名称。
-- Node 名称。
-- 输入摘要。
-- 输出摘要。
-- 耗时。
-- Token 使用量。
-
-### 12.3 Trace
-
-接入 LangSmith 后，可以展示：
-
+通过环境变量 `LANGCHAIN_TRACING_V2=true` 开启后，LangGraph/LangChain 自动上报：
 - 模型调用链路。
-- 工具调用。
-- 节点耗时。
+- Tool 调用。
+- 节点耗时和 token 消耗。
 - Prompt 输入输出。
 - 多轮会话 thread。
 
-这部分非常适合面试时展示工程化能力。
+## 14. 安全设计
 
-## 13. 安全设计
+### 14.1 API Key
 
-### 13.1 API Key
-
-- 使用 `.env` 保存本地密钥。
+- 使用 `.env` 保存所有密钥（LLM + Embedding + LangSmith）。
 - 提供 `.env.example`。
 - `.env` 加入 `.gitignore`。
 
-### 13.2 数据脱敏
+### 14.2 认证
 
-日志中避免直接保存：
+- 前端登录获取 JWT token，存入 localStorage。
+- 所有 API 请求带 `Authorization: Bearer <token>`。
+- 后端通过 `get_current_user_id` 依赖注入校验，按 user_id 隔离数据。
 
-- 手机号。
-- 邮箱。
-- 简历全文。
-- 身份证号。
-- 详细住址。
+### 14.3 数据隔离
 
-### 13.3 用户确认
-
-以下行为需要用户确认：
-
-- 生成目标岗位版简历。
-- 接受高风险润色建议。
-- 导出包含个人隐私的报告。
-- 删除简历和报告。
-
-## 14. 开发里程碑
-
-### Milestone 1：文档与骨架
-
-- 完成需求文档。
-- 完成架构文档。
-- 初始化前后端项目。
-- 配置代码规范。
-
-### Milestone 2：简历与 JD
-
-- 简历文本输入。
-- JD 文本输入。
-- 结构化解析。
-- 数据库存储。
-
-### Milestone 3：匹配分析
-
-- Resume Match Graph。
-- 结构化匹配报告。
-- 报告页面。
-
-### Milestone 4：简历润色
-
-- Resume Polish Graph。
-- 建议接受/拒绝。
-- 简历版本管理。
-
-### Milestone 5：模拟面试
-
-- Mock Interview Graph。
-- 多轮问答。
-- 回答评价。
-- 最终报告。
-
-### Milestone 6：工程化增强
-
-- Prompt 版本化。
-- Agent 执行日志。
-- LangSmith trace。
-- 测试样例。
-- Docker Compose。
+- 所有数据库查询带 `user_id` 过滤。
+- ChromaDB 按 `user_{user_id}` 创建独立 collection。
+- Graph checkpoint 按 `thread_id`（= session_id）隔离。

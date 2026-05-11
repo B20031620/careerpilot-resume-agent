@@ -1,25 +1,25 @@
 name: resume_parse
 version: v1
-description: 解析简历文本，输出结构化简历对象
+description: 解析简历文本，输出精简结构化 JSON
 system: |
-  你是一个专业的简历解析专家。请将用户提供的简历文本解析为结构化 JSON。
+  你是专业的简历解析专家。将简历文本解析为结构化 JSON。
   要求：
   1. 尽可能提取所有关键信息
-  2. 对缺失字段填 null
-  3. 技能标签需要分类
-  4. 工作经历和项目经历需要区分
-  5. 输出必须是合法 JSON
+  2. 缺失字段填 null，不要编造
+  3. 技能只填名称和类别，不要加 evidence
+  4. 工作经历和项目经历要区分
+  5. 输出必须是合法 JSON，且尽量精简以节省 token
 user_template: |
-  请解析以下简历文本，输出结构化 JSON：
+  解析以下简历：
 
   {{ resume_text }}
 
-  请输出以下格式的 JSON：
+  输出 JSON 格式（精简版，不要输出多余字段）：
   {
-    "basic_info": {"name": "", "email": "", "phone": "", "location": ""},
+    "basic_info": {"name": "", "email": "", "phone": "", "age": null, "political_status": null},
     "education": [{"school": "", "degree": "", "major": "", "start_date": "", "end_date": ""}],
-    "skills": [{"name": "", "category": "", "evidence": []}],
-    "work_experiences": [{"company": "", "role": "", "start_date": "", "end_date": "", "responsibilities": [], "achievements": []}],
-    "projects": [{"name": "", "description": "", "tech_stack": [], "role": "", "responsibilities": [], "achievements": [], "metrics": []}]
+    "skills": [{"name": "", "category": ""}],
+    "work_experiences": [{"company": "", "role": "", "start_date": "", "end_date": "", "description": ""}],
+    "projects": [{"name": "", "description": "", "tech_stack": [], "role": ""}]
   }
 output_schema: ResumeProfile

@@ -4,49 +4,13 @@
 
 ## 技术栈
 
-| 层 | 技术 |
-| --- | --- |
-| 前端 | React + Vite + TypeScript + Tailwind CSS |
-| 后端 | FastAPI + Python + SQLAlchemy |
-| Agent 编排 | LangGraph |
-| LLM 集成 | LangChain + DeepSeek (OpenAI-compatible) |
-| 数据库 | SQLite (MVP) |
-
-## 本地启动
-
-### 1. 配置 DeepSeek
-
-复制环境变量模板并填入真实 API Key：
-
-```bash
-cp .env.example .env
-# 编辑 .env，将 DEEPSEEK_API_KEY 替换为你的真实 Key
-```
-
-**注意：不要将真实 API Key 提交到 Git 仓库。**
-
-### 2. 启动后端
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # macOS/Linux
-pip install -e ".[dev]"
-pytest                     # 运行测试
-uvicorn app.main:app --reload  # 启动开发服务器
-```
-
-后端默认运行在 http://localhost:8000，数据库自动创建在 `backend/data/careerpilot.db`。
-
-### 3. 启动前端
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-前端默认运行在 http://localhost:5173，已配置代理将 `/api` 请求转发到后端。
+| 层        | 技术                                       |
+| -------- | ---------------------------------------- |
+| 前端       | React + Vite + TypeScript + Tailwind CSS |
+| 后端       | FastAPI + Python + SQLAlchemy            |
+| Agent 编排 | LangGraph                                |
+| LLM 集成   | LangChain + DeepSeek (OpenAI-compatible) |
+| 数据库      | SQLite (MVP)                             |
 
 ### 4. 前后端联调流程
 
@@ -89,11 +53,11 @@ USE_MOCK_LLM=true uvicorn app.main:app --reload
 cd frontend && npm run dev
 ```
 
-打开 http://localhost:5173，使用默认账号登录：`demo@careerpilot.local` / `demo123456`。
+打开 <http://localhost:5173，使用默认账号登录：`demo@careerpilot.local`> / `demo123456`。
 
 **Step 2 — 创建简历**
 
-1. 打开 http://localhost:5173
+1. 打开 <http://localhost:5173>
 2. 点击左侧「上传/分析」
 3. 标题输入：`AI工程师_张明`
 4. 将 `sample_data/resume_ai_engineer.md` 的内容粘贴到文本框
@@ -140,7 +104,7 @@ cd frontend && npm run dev
 
 ### 7. 验证
 
-- 打开 http://localhost:5173 可以看到中文页面
+- 打开 <http://localhost:5173> 可以看到中文页面
 - 登录后默认进入「简历工作区」，旧 `/dashboard` 会自动跳转到 `/resumes`
 - 左侧导航可切换简历工作区、上传/分析、岗位匹配等核心页面
 - 顶部「当前简历」选择器可在任意业务页切换当前处理简历
@@ -150,35 +114,35 @@ cd frontend && npm run dev
 
 ### 认证
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| POST | `/api/auth/register` | 注册 |
-| POST | `/api/auth/login` | 登录（返回 JWT token） |
-| GET | `/api/auth/me` | 获取当前用户信息 |
+| 方法   | 路径                   | 说明               |
+| ---- | -------------------- | ---------------- |
+| POST | `/api/auth/register` | 注册               |
+| POST | `/api/auth/login`    | 登录（返回 JWT token） |
+| GET  | `/api/auth/me`       | 获取当前用户信息         |
 
 默认 Demo 用户：`demo@careerpilot.local` / `demo123456`
 
-所有数据 API 均需 Bearer token 认证，按 user_id 隔离数据。
+所有数据 API 均需 Bearer token 认证，按 user\_id 隔离数据。
 
 ## 后端 API
 
 ### 系统
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/health` | 健康检查 |
-| GET | `/api/settings/model-status` | 查看模型配置状态 |
-| POST | `/api/settings/test-model-connection` | 测试模型连接 |
+| 方法   | 路径                                    | 说明       |
+| ---- | ------------------------------------- | -------- |
+| GET  | `/health`                             | 健康检查     |
+| GET  | `/api/settings/model-status`          | 查看模型配置状态 |
+| POST | `/api/settings/test-model-connection` | 测试模型连接   |
 
 ### 简历
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| POST | `/api/resumes` | 创建简历 |
-| POST | `/api/resumes/upload` | 上传并解析简历文件（支持 DOCX、DOC、TXT、MD 等） |
-| GET | `/api/resumes` | 获取简历列表 |
-| GET | `/api/resumes/{resume_id}` | 获取简历详情 |
-| DELETE | `/api/resumes/{resume_id}` | 删除简历（软删除） |
+| 方法     | 路径                         | 说明                              |
+| ------ | -------------------------- | ------------------------------- |
+| POST   | `/api/resumes`             | 创建简历                            |
+| POST   | `/api/resumes/upload`      | 上传并解析简历文件（支持 DOCX、DOC、TXT、MD 等） |
+| GET    | `/api/resumes`             | 获取简历列表                          |
+| GET    | `/api/resumes/{resume_id}` | 获取简历详情                          |
+| DELETE | `/api/resumes/{resume_id}` | 删除简历（软删除）                       |
 
 创建简历请求体：
 
@@ -192,11 +156,11 @@ cd frontend && npm run dev
 
 ### 岗位 JD
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| POST | `/api/jobs` | 创建 JD |
-| GET | `/api/jobs` | 获取 JD 列表 |
-| GET | `/api/jobs/{job_id}` | 获取 JD 详情 |
+| 方法     | 路径                   | 说明         |
+| ------ | -------------------- | ---------- |
+| POST   | `/api/jobs`          | 创建 JD      |
+| GET    | `/api/jobs`          | 获取 JD 列表   |
+| GET    | `/api/jobs/{job_id}` | 获取 JD 详情   |
 | DELETE | `/api/jobs/{job_id}` | 删除 JD（软删除） |
 
 创建 JD 请求体：
@@ -211,18 +175,18 @@ cd frontend && npm run dev
 
 ### 报告
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/api/reports` | 获取报告列表 |
-| GET | `/api/reports/{report_id}` | 获取报告详情 |
-| DELETE | `/api/reports/{report_id}` | 删除报告 |
+| 方法     | 路径                         | 说明     |
+| ------ | -------------------------- | ------ |
+| GET    | `/api/reports`             | 获取报告列表 |
+| GET    | `/api/reports/{report_id}` | 获取报告详情 |
+| DELETE | `/api/reports/{report_id}` | 删除报告   |
 
 ### 匹配分析
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| POST | `/api/matches` | 运行简历/JD匹配分析 |
-| GET | `/api/matches/{report_id}` | 获取匹配报告详情 |
+| 方法   | 路径                         | 说明          |
+| ---- | -------------------------- | ----------- |
+| POST | `/api/matches`             | 运行简历/JD匹配分析 |
+| GET  | `/api/matches/{report_id}` | 获取匹配报告详情    |
 
 创建匹配请求体：
 
@@ -233,16 +197,16 @@ cd frontend && npm run dev
 }
 ```
 
-匹配报告包含：overall_score、skill_score、project_score、experience_score、expression_score、strengths、weaknesses、missing_keywords、suggestions、report_markdown。
+匹配报告包含：overall\_score、skill\_score、project\_score、experience\_score、expression\_score、strengths、weaknesses、missing\_keywords、suggestions、report\_markdown。
 
 ### 模拟面试
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| POST | `/api/interviews` | 创建面试会话 |
-| GET | `/api/interviews/{session_id}` | 获取会话详情（含回合列表、当前问题） |
-| POST | `/api/interviews/{session_id}/answer` | 提交回答（返回评估结果和下一题） |
-| POST | `/api/interviews/{session_id}/finish` | 结束面试（生成最终报告） |
+| 方法   | 路径                                    | 说明                 |
+| ---- | ------------------------------------- | ------------------ |
+| POST | `/api/interviews`                     | 创建面试会话             |
+| GET  | `/api/interviews/{session_id}`        | 获取会话详情（含回合列表、当前问题） |
+| POST | `/api/interviews/{session_id}/answer` | 提交回答（返回评估结果和下一题）   |
+| POST | `/api/interviews/{session_id}/finish` | 结束面试（生成最终报告）       |
 
 创建面试请求体：
 
@@ -263,8 +227,8 @@ cd frontend && npm run dev
 }
 ```
 
-回答评估返回：score、strengths、improvements、risks、follow_up_needed。
-最终报告返回：final_report_json（含 average_score、total_turns、各轮详情）、final_report_markdown。
+回答评估返回：score、strengths、improvements、risks、follow\_up\_needed。
+最终报告返回：final\_report\_json（含 average\_score、total\_turns、各轮详情）、final\_report\_markdown。
 
 **Mock 模式**：设置 `USE_MOCK_LLM=true` 环境变量后，匹配分析使用稳定的假数据而不调用 DeepSeek API，适合开发和测试。
 
@@ -317,7 +281,7 @@ careerpilot-resume-agent/
 项目默认接入 DeepSeek，使用 OpenAI 兼容接口。
 
 - Provider：DeepSeek
-- Base URL：https://api.deepseek.com
+- Base URL：<https://api.deepseek.com>
 - 默认模型：deepseek-v4-pro
 - 密钥来源：本地 `.env` 文件中的 `DEEPSEEK_API_KEY`
 

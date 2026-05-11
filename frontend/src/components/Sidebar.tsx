@@ -1,11 +1,8 @@
 import { NavLink } from 'react-router-dom'
 
 const navItems = [
-  { to: '/resumes', icon: 'folder_managed', label: '简历工作区' },
-  { to: '/resume-analysis', icon: 'upload_file', label: '上传/分析' },
-  { to: '/job-match', icon: 'target', label: '岗位匹配' },
-  { to: '/resume-polish', icon: 'edit_note', label: '简历润色' },
-  { to: '/project-story', icon: 'package_2', label: '项目包装' },
+  { to: '/resume-analysis', icon: 'upload_file', label: '我的简历' },
+  { to: '/resume-polish', icon: 'edit_note', label: 'AI 润色' },
   { to: '/mock-interview', icon: 'record_voice_over', label: '模拟面试' },
   { to: '/workplace-help', icon: 'chat', label: '职场沟通' },
   { to: '/reports', icon: 'history', label: '历史报告' },

@@ -6,7 +6,7 @@ export interface InterviewTurn {
   question: string
   question_type: string
   user_answer: string | null
-  evaluation_json: Record<string, string[]> | null
+  evaluation_json: Record<string, unknown> | null
   score: number | null
   follow_up_needed: boolean
   parent_turn_id: string | null
@@ -32,7 +32,7 @@ export interface InterviewSession {
 
 export async function createInterview(data: {
   resume_id?: string
-  jd_id?: string
+  jd_text?: string
   interview_type?: string
   question_count_target?: number
 }): Promise<InterviewSession> {
@@ -52,4 +52,8 @@ export async function submitAnswer(
 
 export async function finishInterview(sessionId: string): Promise<InterviewSession> {
   return apiPost<InterviewSession>(`/api/interviews/${sessionId}/finish`, {})
+}
+
+export async function listInterviews(): Promise<InterviewSession[]> {
+  return apiGet<InterviewSession[]>('/api/interviews')
 }

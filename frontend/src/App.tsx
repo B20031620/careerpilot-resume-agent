@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
-import ResumeWorkspacePage from './pages/ResumeWorkspacePage'
 import ResumeAnalysisPage from './pages/ResumeAnalysisPage'
-import JobMatchPage from './pages/JobMatchPage'
 import ResumePolishPage from './pages/ResumePolishPage'
-import ProjectStoryPage from './pages/ProjectStoryPage'
 import MockInterviewPage from './pages/MockInterviewPage'
 import WorkplaceHelpPage from './pages/WorkplaceHelpPage'
 import ReportsPage from './pages/ReportsPage'
@@ -34,7 +31,7 @@ export default function App() {
   const handleLogin = () => {
     getMe().then((u) => {
       setUser(u)
-      navigate('/resumes')
+      navigate('/resume-analysis')
     })
   }
 
@@ -47,26 +44,23 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={
-        isLoggedIn() ? <Navigate to="/resumes" replace /> : <LoginPage onLogin={handleLogin} />
+        isLoggedIn() ? <Navigate to="/resume-analysis" replace /> : <LoginPage onLogin={handleLogin} />
       } />
       <Route element={
         <RequireAuth>
           <AppLayout user={user} onLogout={handleLogout} />
         </RequireAuth>
       }>
-        <Route index element={<Navigate to="/resumes" replace />} />
-        <Route path="dashboard" element={<Navigate to="/resumes" replace />} />
-        <Route path="resumes" element={<ResumeWorkspacePage />} />
+        <Route index element={<Navigate to="/resume-analysis" replace />} />
+        <Route path="dashboard" element={<Navigate to="/resume-analysis" replace />} />
         <Route path="resume-analysis" element={<ResumeAnalysisPage />} />
-        <Route path="job-match" element={<JobMatchPage />} />
         <Route path="resume-polish" element={<ResumePolishPage />} />
-        <Route path="project-story" element={<ProjectStoryPage />} />
         <Route path="mock-interview" element={<MockInterviewPage />} />
         <Route path="workplace-help" element={<WorkplaceHelpPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/resumes" replace />} />
+      <Route path="*" element={<Navigate to="/resume-analysis" replace />} />
     </Routes>
   )
 }

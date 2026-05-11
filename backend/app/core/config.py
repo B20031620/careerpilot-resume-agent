@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "careerpilot-dev-secret-change-in-production"
     LLM_TIMEOUT_SECONDS: int = 90
     LLM_MAX_RETRIES: int = 0
+    LANGCHAIN_API_KEY: str = ""
+    LANGCHAIN_TRACING_V2: str = "false"
+    LANGCHAIN_PROJECT: str = "careerpilot"
+    DOUBAO_EMBEDDING_API_KEY: str = ""
+    DOUBAO_EMBEDDING_MODEL: str = "Doubao-embedding"
 
     model_config = SettingsConfigDict(
         env_file=(PROJECT_ROOT / ".env", BACKEND_ROOT / ".env"),

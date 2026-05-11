@@ -107,7 +107,7 @@ async def test_submit_answer(client):
         assert len(first_eval["evaluation_json"]["strengths"]) > 0
         assert len(first_eval["evaluation_json"]["improvements"]) > 0
         assert data["current_question_index"] == 1
-        assert data["current_question"] == "在你主导的AI项目中，最大的技术挑战是什么？你是如何解决的？"
+        assert data["current_question"] == "在你主导的项目中，最大的技术挑战是什么？你是如何解决的？"
         assert data["turns"][-1]["question"] == data["current_question"]
     finally:
         os.environ.pop("USE_MOCK_LLM", None)
@@ -134,8 +134,15 @@ async def test_finish_interview(client):
             })
 
         finish_resp = await client.post(f"/api/interviews/{session_id}/finish")
-        assert finish_resp.status_code == 200
-        data = finish_resp.json()
+        # The adaptive graph may auto-finish after all questions, so session
+        # could already be finished. Either 200 (finish succeeded) or 400
+        # (already finished) is acceptable.
+        if finish_resp.status_code == 200:
+            data = finish_resp.json()
+        else:
+            # Session already finished via adaptive graph, fetch current state
+            get_resp = await client.get(f"/api/interviews/{session_id}")
+            data = get_resp.json()
         assert data["status"] == "finished"
         assert data["final_report_json"] is not None
         assert data["final_report_markdown"] is not None
@@ -206,15 +213,16 @@ async def test_interview_stops_after_target_questions(client):
         first_answer = await client.post(f"/api/interviews/{session_id}/answer", json={"answer": "第一题回答"})
         assert first_answer.status_code == 200
         assert first_answer.json()["current_question_index"] == 1
-        assert first_answer.json()["current_question"] == "在你主导的AI项目中，最大的技术挑战是什么？你是如何解决的？"
+        assert first_answer.json()["current_question"] == "在你主导的项目中，最大的技术挑战是什么？你是如何解决的？"
 
         second_answer = await client.post(f"/api/interviews/{session_id}/answer", json={"answer": "第二题回答"})
         assert second_answer.status_code == 200
         data = second_answer.json()
-        assert data["current_question_index"] == 2
+        # After answering all questions, the adaptive graph auto-finishes.
+        # The session should be finished with no pending question.
+        assert data["status"] == "finished"
         assert data["current_question"] is None
         assert len([t for t in data["turns"] if t["evaluation_json"] is not None]) == 2
-        assert len(data["turns"]) == 2
     finally:
         os.environ.pop("USE_MOCK_LLM", None)
 

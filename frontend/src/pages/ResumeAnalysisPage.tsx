@@ -1,97 +1,73 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useRef, useState, useEffect, type DragEvent, type ChangeEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/client'
-import { createResume, parseResume, uploadResumeFile, type ResumeRead } from '../api/resumes'
+import { uploadResumeFile, parseResume, createResume, getResume, listResumes, deleteResume, type ResumeRead, type ResumeListItem } from '../api/resumes'
 import { setCurrentResumeId } from '../utils/currentResume'
 
 export default function ResumeAnalysisPage() {
-  const [title, setTitle] = useState('')
-  const [rawText, setRawText] = useState('')
-  const [selectedFileName, setSelectedFileName] = useState('')
+  const [resumes, setResumes] = useState<ResumeListItem[]>([])
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [detail, setDetail] = useState<ResumeRead | null>(null)
   const [loadingLabel, setLoadingLabel] = useState('')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<ResumeRead | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const busyRef = useRef(false)
+  const navigate = useNavigate()
 
-  const handlePickFile = () => {
-    if (busyRef.current) return
-    fileInputRef.current?.click()
+  const loadList = async () => {
+    try {
+      const data = await listResumes()
+      setResumes(data)
+    } catch { /* ignore */ }
   }
 
-  const runParse = async (resume: ResumeRead) => {
-    setResult(resume)
-    setCurrentResumeId(resume.id)
-    setLoadingLabel('正在进行 AI 结构化解析...')
-    const parsed = await parseResume(resume.id)
-    setResult(parsed)
-    return parsed
-  }
+  useEffect(() => { loadList() }, [])
 
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (file: File) => {
     if (busyRef.current) return
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setError(null)
     const fileName = file.name
-    const supportedFile = /\.(docx|doc|txt|md|markdown|csv|json|log)$/i.test(fileName) || file.type.startsWith('text/')
-    if (!supportedFile) {
-      setError('当前支持 .docx、.doc、.txt、.md、.csv、.json 等格式。PDF 请先复制正文粘贴。')
-      event.target.value = ''
+    if (!/\.(docx|doc|txt|md|markdown)$/i.test(fileName)) {
+      setError('当前支持 .docx、.doc、.txt、.md 格式')
       return
     }
-
     if (file.size > 5 * 1024 * 1024) {
-      setError('文件过大，请选择 5MB 以内的简历文件，或复制核心内容粘贴。')
-      event.target.value = ''
+      setError('文件过大，请选择 5MB 以内')
       return
     }
 
-    busyRef.current = true
-    setLoading(true)
-    setLoadingLabel('正在上传并提取简历文本...')
-    setSelectedFileName(fileName)
-    try {
-      const resume = await uploadResumeFile(file, title.trim() || undefined)
-      setTitle(resume.title)
-      setRawText(resume.raw_text)
-      await runParse(resume)
-    } catch (e) {
-      if (e instanceof ApiError) {
-        setError(e.detail)
-      } else {
-        setError('上传或解析失败，请检查文件格式、模型配置或后端服务。')
-      }
-      setSelectedFileName('')
-      event.target.value = ''
-    } finally {
-      busyRef.current = false
-      setLoading(false)
-      setLoadingLabel('')
-      event.target.value = ''
-    }
-  }
-
-  const handleSubmit = async () => {
-    if (!title.trim() || busyRef.current) return
-    busyRef.current = true
-    setLoading(true)
-    setLoadingLabel('正在创建简历记录...')
     setError(null)
+    busyRef.current = true
+    setLoading(true)
+    setLoadingLabel('正在上传...')
     try {
-      const resume = await createResume({
-        title: title.trim(),
-        raw_text: rawText,
-        source_type: selectedFileName ? 'file' : 'text',
-      })
-      await runParse(resume)
-    } catch (e) {
-      if (e instanceof ApiError) {
-        setError(e.detail)
-      } else {
-        setError('创建或解析简历失败，请检查后端服务是否启动')
+      const baseTitle = file.name.replace(/\.(docx|doc|txt|md|markdown)$/i, '')
+      let resume = await uploadResumeFile(file, baseTitle)
+
+      // If upload returned an existing parsed resume, create a new copy with suffix
+      if (resume.parse_status === 'succeeded' || resume.parse_status === 'quick_succeeded') {
+        // Find next available suffix
+        const existingTitles = resumes.map(r => r.title)
+        let suffix = 2
+        while (existingTitles.includes(`${baseTitle}-${suffix}`)) suffix++
+        const newTitle = `${baseTitle}-${suffix}`
+
+        resume = await createResume({
+          title: newTitle,
+          raw_text: resume.raw_text,
+          source_type: resume.source_type,
+        })
       }
+
+      setCurrentResumeId(resume.id)
+      setLoadingLabel('AI 正在解析...')
+      const parsed = await parseResume(resume.id)
+      setDetail(parsed)
+      setExpandedId(parsed.id)
+      await loadList()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.detail : '上传或解析失败，请重试')
     } finally {
       busyRef.current = false
       setLoading(false)
@@ -99,243 +75,281 @@ export default function ResumeAnalysisPage() {
     }
   }
 
-  const structured = result?.structured_json ?? null
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) handleFile(file)
+    event.target.value = ''
+  }
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }
+
+  const handleExpand = async (resumeId: string) => {
+    if (expandedId === resumeId) {
+      setExpandedId(null)
+      setDetail(null)
+      return
+    }
+    setExpandedId(resumeId)
+    setDetail(null)
+    try {
+      const data = await getResume(resumeId)
+      setDetail(data)
+      if (data.parse_status === 'pending') {
+        const parsed = await parseResume(resumeId)
+        setDetail(parsed)
+        await loadList()
+      }
+    } catch { /* ignore */ }
+  }
+
+  const handleDelete = async (resumeId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!window.confirm('确认删除这份简历？')) return
+    try {
+      await deleteResume(resumeId)
+      if (expandedId === resumeId) { setExpandedId(null); setDetail(null) }
+      await loadList()
+    } catch { /* ignore */ }
+  }
+
+  const structured = detail?.structured_json ?? null
   const basicInfo = (structured?.basic_info ?? {}) as Record<string, unknown>
   const skills = Array.isArray(structured?.skills) ? structured.skills : []
+  const education = Array.isArray(structured?.education) ? structured.education : []
   const projects = Array.isArray(structured?.projects) ? structured.projects : []
   const experiences = Array.isArray(structured?.work_experiences) ? structured.work_experiences : []
-  const parseError = result?.parse_warnings?.error ? String(result.parse_warnings.error) : ''
-  const parseWarning = result?.parse_warnings?.warning ? String(result.parse_warnings.warning) : ''
-  const parseSucceeded = result?.parse_status === 'succeeded' || result?.parse_status === 'quick_succeeded'
-  const parseStatusText = result?.parse_status === 'succeeded'
-    ? 'AI 深度解析完成'
-    : result?.parse_status === 'quick_succeeded'
-      ? '本地初步解析完成'
-      : result?.parse_status === 'failed'
-        ? '简历解析失败'
-        : '简历已创建，等待解析'
+  const parseSucceeded = detail?.parse_status === 'succeeded' || detail?.parse_status === 'quick_succeeded'
 
-  const handleAiRefine = async () => {
-    if (!result || busyRef.current) return
-    busyRef.current = true
-    setLoading(true)
-    setLoadingLabel('正在进行 AI 精修...')
-    try {
-      const parsed = await parseResume(result.id)
-      setResult(parsed)
-    } catch (e) {
-      if (e instanceof ApiError) {
-        setError(e.detail)
-      } else {
-        setError('AI 精修失败，请检查模型配置或后端服务。')
-      }
-    } finally {
-      busyRef.current = false
-      setLoading(false)
-      setLoadingLabel('')
-    }
+  const statusMap: Record<string, { label: string; color: string }> = {
+    succeeded: { label: 'AI 已解析', color: 'bg-risk-low/20 text-risk-low' },
+    quick_succeeded: { label: '初步解析', color: 'bg-risk-medium/20 text-risk-medium' },
+    pending: { label: '待解析', color: 'bg-on-surface-variant/20 text-on-surface-variant' },
+    failed: { label: '解析失败', color: 'bg-risk-high/20 text-risk-high' },
+    processing: { label: '解析中', color: 'bg-agent-accent/20 text-agent-accent' },
   }
 
   return (
     <div className="max-w-container-max-width mx-auto w-full">
       <header className="mb-6">
-        <h2 className="font-h2 text-h2 font-bold text-text-primary">简历分析</h2>
-        <p className="font-body-md text-text-secondary mt-1">上传或粘贴您的简历，AI 将为您进行深度结构化解析</p>
+        <h2 className="font-h2 text-h2 font-bold text-text-primary">我的简历</h2>
+        <p className="font-body-md text-text-secondary mt-1">上传简历，AI 自动解析，随时查看和操作</p>
       </header>
 
-      <div className="flex flex-col lg:flex-row gap-gutter">
-        {/* Left: Input */}
-        <div className="w-full lg:w-5/12 flex flex-col gap-stack-gap">
-          <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding flex flex-col h-full shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-h3 text-h3 font-semibold text-text-primary">输入简历</h3>
-              <span className="font-status text-status text-text-secondary bg-surface-container px-2 py-1 rounded">
-                第 1 步
-              </span>
-            </div>
+      {/* Upload Area */}
+      <input ref={fileInputRef} type="file" accept=".docx,.doc,.txt,.md" className="hidden" onChange={handleFileChange} disabled={loading} />
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".docx,.doc,.txt,.md,.markdown,.csv,.json,.log,text/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="hidden"
-              onChange={handleFileChange}
-              disabled={loading}
-            />
-
-            <div className="flex border-b border-border-subtle mb-4">
-              <button
-                type="button"
-                onClick={handlePickFile}
-                disabled={loading}
-                className="px-4 py-2 font-body-md text-text-secondary hover:text-primary transition-colors flex items-center gap-1 disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-[18px]">upload_file</span>
-                文件上传
-              </button>
-              <button className="px-4 py-2 font-body-md text-primary border-b-2 border-primary font-medium">
-                文本粘贴
-              </button>
-            </div>
-            {selectedFileName && (
-              <div className="mb-4 flex items-center justify-between rounded-lg border border-agent-accent/20 bg-agent-running/20 px-3 py-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="material-symbols-outlined text-[18px] text-agent-accent">description</span>
-                  <p className="font-body-sm text-text-primary truncate">{selectedFileName}</p>
-                </div>
-                <button
-                  type="button"
-                  disabled={loading}
-                  className="font-body-sm text-on-surface-variant hover:text-primary disabled:opacity-50"
-                  onClick={() => {
-                    setSelectedFileName('')
-                    if (fileInputRef.current) fileInputRef.current.value = ''
-                  }}
-                >
-                  清除文件
-                </button>
-              </div>
-            )}
-
-            <div className="mb-3">
-              <label className="block font-body-md text-text-primary font-medium mb-1">简历标题</label>
-              <input
-                className="w-full px-3 py-2 border border-border-subtle rounded-lg font-body-md text-text-primary bg-surface focus:outline-none focus:border-agent-accent"
-                placeholder="例如：前端工程师_张三"
-                value={title}
-                disabled={loading}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-
-            <textarea
-              className="w-full flex-1 min-h-[200px] border border-border-subtle rounded-lg p-3 font-body-md text-text-primary bg-surface resize-none focus:outline-none focus:border-agent-accent mb-4"
-              placeholder="请粘贴简历原文，或点击「文件上传」上传 DOCX/DOC/文本文件..."
-              value={rawText}
-              disabled={loading}
-              onChange={(e) => {
-                setRawText(e.target.value)
-                if (!e.target.value.trim()) setSelectedFileName('')
-              }}
-            />
-
-            {error && (
-              <div className="mb-4 p-3 bg-risk-high/10 border border-risk-high/30 rounded-lg">
-                <p className="font-body-md text-risk-high">{error}</p>
-              </div>
-            )}
-
-            <button
-              onClick={handleSubmit}
-              disabled={loading || !title.trim() || !rawText.trim()}
-              className="w-full bg-primary text-on-primary font-body-md py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors mt-auto disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-sm">{loading ? 'hourglass_top' : 'psychology'}</span>
-              {loading ? (loadingLabel || '正在处理...') : '开始深度解析'}
-            </button>
+      {loading ? (
+        <div className="mb-6 bg-surface-container-lowest border border-border-subtle rounded-xl p-5 shadow-sm flex items-center gap-4">
+          <span className="material-symbols-outlined text-2xl text-agent-accent animate-spin">progress_activity</span>
+          <div>
+            <p className="font-body-md text-text-primary font-medium">{loadingLabel}</p>
+            <p className="font-body-sm text-on-surface-variant">请稍候...</p>
           </div>
         </div>
-
-        {/* Right: Results */}
-        <div className="w-full lg:w-7/12 flex flex-col gap-stack-gap">
-          {result ? (
-            <>
-              {/* Status Bar */}
-              <div className={`${result.parse_status === 'failed' ? 'bg-risk-high/10 border-risk-high/30' : parseSucceeded ? 'bg-agent-running/30 border-agent-accent/20' : 'bg-risk-medium/10 border-risk-medium/30'} border rounded-xl p-4 flex items-center justify-between`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-agent-accent/20 flex items-center justify-center text-agent-accent">
-                    <span className="material-symbols-outlined text-lg">
-                      {result.parse_status === 'failed' ? 'error' : parseSucceeded ? 'check' : 'hourglass_top'}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-body-md text-text-primary font-medium">
-                      {parseStatusText}
-                    </p>
-                    <p className="font-body-sm text-text-secondary">ID: {result.id}</p>
-                    {parseError && <p className="font-body-sm text-risk-high mt-1">{parseError}</p>}
-                    {parseWarning && <p className="font-body-sm text-risk-medium mt-1">{parseWarning}</p>}
-                  </div>
-                </div>
-                {result.parse_status === 'quick_succeeded' && (
-                  <button
-                    onClick={handleAiRefine}
-                    disabled={loading}
-                    className="bg-primary text-on-primary font-body-md px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-on-primary-fixed-variant transition-colors disabled:opacity-50"
-                  >
-                    <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                    重新 AI 精修
-                  </button>
-                )}
-              </div>
-
-              {/* Structured Data Grid */}
-              <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm flex-1">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-h3 text-h3 font-semibold text-text-primary">简历信息</h3>
-                  <span className="font-label-caps text-label-caps text-text-secondary uppercase tracking-wider">
-                    解析状态: {result.parse_status}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { icon: 'title', label: '标题', value: result.title },
-                    { icon: 'category', label: '来源类型', value: result.source_type },
-                    { icon: 'text_snippet', label: '原文长度', value: `${result.raw_text.length} 字` },
-                    { icon: 'schedule', label: '创建时间', value: new Date(result.created_at).toLocaleString('zh-CN') },
-                    { icon: 'person', label: '姓名', value: String(basicInfo.name || '未识别') },
-                    { icon: 'work', label: '项目数量', value: `${projects.length} 个` },
-                    { icon: 'psychology', label: '技能数量', value: `${skills.length} 项` },
-                    { icon: 'business_center', label: '经历数量', value: `${experiences.length} 段` },
-                  ].map((item) => (
-                    <div key={item.label} className="border border-border-subtle rounded-lg p-4 bg-surface hover:border-outline-variant transition-colors">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="material-symbols-outlined text-[18px] text-on-primary-container">{item.icon}</span>
-                        <span className="font-body-md font-medium text-text-primary">{item.label}</span>
-                      </div>
-                      <p className="font-body-sm text-text-secondary">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-                {parseSucceeded && structured && (
-                  <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="border border-border-subtle rounded-lg p-4 bg-surface">
-                      <h4 className="font-body-md font-medium text-text-primary mb-3">识别技能</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {skills.slice(0, 12).map((skill, index) => (
-                          <span key={index} className="px-2 py-1 bg-agent-running/30 text-agent-accent rounded font-body-sm">
-                            {String((skill as Record<string, unknown>).name || skill)}
-                          </span>
-                        ))}
-                        {skills.length === 0 && <span className="font-body-sm text-on-surface-variant">暂无结构化技能</span>}
-                      </div>
-                    </div>
-                    <div className="border border-border-subtle rounded-lg p-4 bg-surface">
-                      <h4 className="font-body-md font-medium text-text-primary mb-3">识别项目</h4>
-                      <div className="space-y-2">
-                        {projects.slice(0, 4).map((project, index) => (
-                          <p key={index} className="font-body-sm text-text-secondary">
-                            {String((project as Record<string, unknown>).name || `项目 ${index + 1}`)}
-                          </p>
-                        ))}
-                        {projects.length === 0 && <span className="font-body-sm text-on-surface-variant">暂无结构化项目</span>}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-panel-padding shadow-sm flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <span className="material-symbols-outlined text-5xl text-on-primary-container mb-3">description</span>
-                <p className="font-body-md text-text-secondary">输入简历标题和原文后点击「开始深度解析」</p>
-                <p className="font-body-sm text-on-surface-variant mt-2">解析结果将在此处展示</p>
-              </div>
-            </div>
-          )}
+      ) : (
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          onDrop={handleDrop}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          className={`mb-6 bg-surface-container-lowest border-2 border-dashed rounded-xl p-5 shadow-sm cursor-pointer transition-colors flex items-center gap-4 ${
+            dragOver ? 'border-agent-accent bg-agent-accent/5' : 'border-border-subtle hover:border-agent-accent/50'
+          }`}
+        >
+          <div className="w-10 h-10 rounded-full bg-agent-accent/10 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-xl text-agent-accent">upload_file</span>
+          </div>
+          <div>
+            <p className="font-body-md text-text-primary font-medium">拖拽简历文件到此处，或点击上传</p>
+            <p className="font-body-sm text-on-surface-variant">支持 .docx .doc .txt .md，5MB 以内</p>
+          </div>
         </div>
-      </div>
+      )}
+
+      {error && (
+        <div className="mb-4 p-3 bg-risk-high/10 border border-risk-high/30 rounded-lg">
+          <p className="font-body-md text-risk-high">{error}</p>
+        </div>
+      )}
+
+      {/* Resume List */}
+      {resumes.length === 0 && !loading ? (
+        <div className="bg-surface-container-lowest border border-border-subtle rounded-xl p-10 shadow-sm text-center">
+          <span className="material-symbols-outlined text-5xl text-on-primary-container mb-3">description</span>
+          <p className="font-body-md text-text-secondary mb-1">还没有简历</p>
+          <p className="font-body-sm text-on-surface-variant">上传一份简历，AI 将自动为您解析</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {resumes.map((r) => {
+            const isExpanded = expandedId === r.id
+            const st = statusMap[r.parse_status] || { label: r.parse_status, color: 'bg-on-surface-variant/20 text-on-surface-variant' }
+            return (
+              <div key={r.id} className="bg-surface-container-lowest border border-border-subtle rounded-xl shadow-sm overflow-hidden">
+                {/* Card Header */}
+                <button
+                  onClick={() => handleExpand(r.id)}
+                  className="w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-surface-container-low transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-lg text-primary">description</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="font-body-md text-text-primary font-medium truncate">{r.title}</p>
+                      <span className={`px-2 py-0.5 rounded font-body-sm text-xs shrink-0 ${st.color}`}>{st.label}</span>
+                    </div>
+                    <p className="font-body-sm text-on-surface-variant">{new Date(r.created_at).toLocaleString('zh-CN')}</p>
+                  </div>
+                  <span className={`material-symbols-outlined text-on-surface-variant transition-transform ${isExpanded ? 'rotate-180' : ''}`}>expand_more</span>
+                </button>
+
+                {/* Expanded Detail */}
+                {isExpanded && detail && detail.id === r.id && (
+                  <div className="border-t border-border-subtle px-5 py-5 space-y-5">
+                    {detail.parse_status === 'pending' && (
+                      <p className="font-body-sm text-on-surface-variant">正在解析，请稍候...</p>
+                    )}
+                    {detail.parse_status === 'failed' && (
+                      <p className="font-body-sm text-risk-high">解析失败，请重新上传</p>
+                    )}
+                    {parseSucceeded && structured && (
+                      <>
+                        {/* Basic Info */}
+                        <div>
+                          <h4 className="font-body-md font-medium text-text-primary mb-3">基本信息</h4>
+                          <div className="flex flex-wrap gap-x-6 gap-y-2">
+                            {[
+                              { icon: 'person', label: '姓名', value: basicInfo.name },
+                              { icon: 'phone_android', label: '电话', value: basicInfo.phone },
+                              { icon: 'mail', label: '邮箱', value: basicInfo.email },
+                              { icon: 'cake', label: '年龄', value: basicInfo.age ? `${basicInfo.age} 岁` : null },
+                              { icon: 'flag', label: '政治面貌', value: basicInfo.political_status },
+                            ].filter(item => item.value).map(item => (
+                              <div key={item.label} className="flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[16px] text-on-primary-container">{item.icon}</span>
+                                <span className="font-body-sm text-on-surface-variant">{item.label}</span>
+                                <span className="font-body-sm text-text-primary font-medium">{String(item.value)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Education */}
+                        {education.length > 0 && (
+                          <div>
+                            <h4 className="font-body-md font-medium text-text-primary mb-3">教育经历</h4>
+                            <div className="space-y-2">
+                              {(education as Record<string, unknown>[]).map((edu, i) => (
+                                <div key={i} className="flex items-center gap-2 text-sm">
+                                  <span className="material-symbols-outlined text-[16px] text-primary">school</span>
+                                  <span className="text-text-primary font-medium">{String(edu.school || '')}</span>
+                                  <span className="text-text-secondary">{[edu.major, edu.degree].filter(Boolean).map(s => String(s)).join(' · ')}</span>
+                                  <span className="text-on-surface-variant">{[String(edu.start_date ?? ''), String(edu.end_date ?? '')].filter(Boolean).join(' - ')}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Work Experience */}
+                        {experiences.length > 0 && (
+                          <div>
+                            <h4 className="font-body-md font-medium text-text-primary mb-3">工作/实习经历</h4>
+                            <div className="space-y-2">
+                              {(experiences as Record<string, unknown>[]).map((exp, i) => (
+                                <div key={i} className="flex items-start gap-2 text-sm">
+                                  <span className="material-symbols-outlined text-[16px] text-secondary mt-0.5">business_center</span>
+                                  <div>
+                                    <span className="text-text-primary font-medium">{String(exp.company || '')}</span>
+                                    {Boolean(exp.role) && <span className="text-text-secondary ml-1">{String(exp.role)}</span>}
+                                    <span className="text-on-surface-variant ml-2">{[String(exp.start_date ?? ''), String(exp.end_date ?? '')].filter(Boolean).join(' - ')}</span>
+                                    {Boolean(exp.description) && <p className="text-text-secondary mt-0.5 line-clamp-2">{String(exp.description)}</p>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Projects */}
+                        {projects.length > 0 && (
+                          <div>
+                            <h4 className="font-body-md font-medium text-text-primary mb-3">项目经历</h4>
+                            <div className="space-y-2">
+                              {(projects as Record<string, unknown>[]).map((proj, i) => {
+                                const ts = Array.isArray(proj.tech_stack) ? proj.tech_stack : []
+                                return (
+                                  <div key={i} className="p-3 rounded-lg bg-surface">
+                                    <div className="flex items-baseline gap-2 mb-1">
+                                      <span className="text-sm text-text-primary font-medium">{String(proj.name || `项目 ${i + 1}`)}</span>
+                                      {Boolean(proj.role) && <span className="text-xs text-on-surface-variant">{String(proj.role)}</span>}
+                                    </div>
+                                    {Boolean(proj.description) && <p className="text-xs text-text-secondary mb-1.5 line-clamp-2">{String(proj.description)}</p>}
+                                    {ts.length > 0 && (
+                                      <div className="flex flex-wrap gap-1">
+                                        {ts.map((t: unknown, j: number) => (
+                                          <span key={j} className="px-1.5 py-0.5 bg-agent-accent/10 text-agent-accent rounded text-xs">{String(t)}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Skills */}
+                        {skills.length > 0 && (
+                          <div>
+                            <h4 className="font-body-md font-medium text-text-primary mb-3">技能标签</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {skills.map((skill, i) => (
+                                <span key={i} className="px-2.5 py-1 bg-agent-running/30 text-agent-accent rounded-lg font-body-sm">{String((skill as Record<string, unknown>).name || skill)}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex flex-wrap gap-3 pt-2 border-t border-border-subtle">
+                          <button
+                            onClick={() => { setCurrentResumeId(r.id); navigate('/resume-polish') }}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg font-body-md hover:bg-on-primary-fixed-variant transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">edit_note</span>
+                            简历润色
+                          </button>
+                          <button
+                            onClick={() => { setCurrentResumeId(r.id); navigate('/mock-interview') }}
+                            className="flex items-center gap-2 px-4 py-2 border border-border-subtle text-text-primary rounded-lg font-body-md hover:bg-surface-container-low transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">record_voice_over</span>
+                            模拟面试
+                          </button>
+                          <button
+                            onClick={(e) => handleDelete(r.id, e)}
+                            className="flex items-center gap-2 px-4 py-2 text-risk-high rounded-lg font-body-md hover:bg-risk-high/10 transition-colors ml-auto"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                            删除
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

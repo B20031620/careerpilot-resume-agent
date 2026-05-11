@@ -1,16 +1,31 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.agents.mock_interview.graph import run_answer, run_init, run_finish
-from app.agents.mock_interview.schemas import InterviewAnswerRequest, InterviewSessionResponse, InterviewTurnResponse
+from app.agents.mock_interview.graph import (
+    run_interview_answer,
+    run_interview_finish,
+    run_interview_init,
+)
+from app.agents.mock_interview.schemas import InterviewSessionResponse, InterviewTurnResponse
 from app.api.deps import get_current_user_id, get_db
 from app.models.interview import InterviewSession, InterviewTurn
 from app.models.job_description import JobDescription
 from app.models.resume import Resume
 
 router = APIRouter(prefix="/api/interviews", tags=["interviews"])
+
+
+class CreateInterviewRequest(BaseModel):
+    resume_id: Optional[str] = None
+    jd_id: Optional[str] = None
+    jd_text: Optional[str] = None
+    interview_type: str = "technical_1"
+    question_count_target: int = 5
 
 
 def _session_to_response(session: InterviewSession, db: Session) -> InterviewSessionResponse:
@@ -74,8 +89,12 @@ def list_interviews(user_id: str = Depends(get_current_user_id), db: Session = D
 
 
 @router.post("", response_model=InterviewSessionResponse, status_code=201)
-def create_interview(body: dict, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    resume_id = body.get("resume_id")
+def create_interview(
+    body: CreateInterviewRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    resume_id = body.resume_id
     if resume_id:
         resume = db.query(Resume).filter(
             Resume.id == resume_id,
@@ -85,7 +104,7 @@ def create_interview(body: dict, user_id: str = Depends(get_current_user_id), db
         if not resume:
             raise HTTPException(status_code=404, detail="Resume not found")
 
-    jd_id = body.get("jd_id")
+    jd_id = body.jd_id
     if jd_id:
         job = db.query(JobDescription).filter(
             JobDescription.id == jd_id,
@@ -99,20 +118,22 @@ def create_interview(body: dict, user_id: str = Depends(get_current_user_id), db
         user_id=user_id,
         resume_id=resume_id,
         jd_id=jd_id,
-        interview_type=body.get("interview_type", "technical_1"),
-        question_count_target=body.get("question_count_target", 5),
+        interview_type=body.interview_type,
+        question_count_target=body.question_count_target,
         status="active",
     )
     db.add(session)
     db.commit()
     db.refresh(session)
 
-    result = run_init(
+    result = run_interview_init(
         session.id,
         session.resume_id or "",
-        session.jd_id or "",
+        jd_id=jd_id or "",
+        jd_text=body.jd_text or "",
         interview_type=session.interview_type,
         question_count_target=session.question_count_target,
+        user_id=user_id,
         db_session_factory=lambda: type(db)(bind=db.bind),
     )
 
@@ -124,6 +145,7 @@ def create_interview(body: dict, user_id: str = Depends(get_current_user_id), db
             raise HTTPException(status_code=422, detail=error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 
+    # Save the first question as a turn in the DB
     turn = InterviewTurn(
         session_id=session.id,
         turn_index=0,
@@ -147,7 +169,15 @@ def get_interview(session_id: str, user_id: str = Depends(get_current_user_id), 
 
 
 @router.post("/{session_id}/answer", response_model=InterviewSessionResponse)
-def submit_answer(session_id: str, body: InterviewAnswerRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+def submit_answer(
+    session_id: str,
+    body: dict,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    from app.agents.mock_interview.schemas import InterviewAnswerRequest
+    req = InterviewAnswerRequest(**body)
+
     session = db.query(InterviewSession).filter(
         InterviewSession.id == session_id, InterviewSession.user_id == user_id
     ).first()
@@ -172,37 +202,31 @@ def submit_answer(session_id: str, body: InterviewAnswerRequest, user_id: str = 
     if not current_turn:
         raise HTTPException(status_code=400, detail="No pending question to answer")
 
-    current_turn.user_answer = body.answer
+    current_turn.user_answer = req.answer
     db.commit()
 
-    current_state = {
-        "session_id": session.id,
-        "resume_id": session.resume_id or "",
-        "jd_id": session.jd_id or "",
-        "resume_text": "",
-        "jd_text": "",
-        "current_question": current_turn.question,
-        "current_question_type": current_turn.question_type,
-        "user_answer": body.answer,
-        "current_question_index": session.current_question_index,
-        "question_count_target": session.question_count_target,
-        "turns": [
-            {
-                "turn_index": t.turn_index,
-                "question": t.question,
-                "question_type": t.question_type,
-                "user_answer": t.user_answer,
-                "score": t.score,
-                "strengths": (t.evaluation_json or {}).get("strengths", []),
-                "improvements": (t.evaluation_json or {}).get("improvements", []),
-                "risks": (t.evaluation_json or {}).get("risks", []),
-            }
-            for t in turns
-            if t.evaluation_json is not None
-        ],
-    }
+    # Build conversation history from evaluated turns for the graph state
+    conversation_turns = [
+        {
+            "turn_index": t.turn_index,
+            "question": t.question,
+            "question_type": t.question_type,
+            "user_answer": t.user_answer,
+            "score": t.score,
+            "strengths": (t.evaluation_json or {}).get("strengths", []),
+            "improvements": (t.evaluation_json or {}).get("improvements", []),
+            "risks": (t.evaluation_json or {}).get("risks", []),
+        }
+        for t in turns
+        if t.evaluation_json is not None
+    ]
 
-    result = run_answer(current_state, db_session_factory=lambda: type(db)(bind=db.bind))
+    # Use graph execution with checkpoint (thread_id = session_id)
+    result = run_interview_answer(
+        session_id,
+        req.answer,
+        db_session_factory=lambda: type(db)(bind=db.bind),
+    )
 
     if result.get("error"):
         error_msg = result["error"]
@@ -210,6 +234,7 @@ def submit_answer(session_id: str, body: InterviewAnswerRequest, user_id: str = 
             raise HTTPException(status_code=422, detail=error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 
+    # Update current turn with evaluation results
     current_turn.evaluation_json = {
         "strengths": result.get("eval_strengths", []),
         "improvements": result.get("eval_improvements", []),
@@ -218,11 +243,21 @@ def submit_answer(session_id: str, body: InterviewAnswerRequest, user_id: str = 
     current_turn.score = result.get("eval_score")
     current_turn.follow_up_needed = result.get("follow_up_needed", False)
 
+    # Check if the interview finished (final_report generated)
+    if result.get("final_report_json"):
+        session.final_report_json = result.get("final_report_json")
+        session.final_report_markdown = result.get("final_report_markdown", "")
+        session.status = "finished"
+        db.commit()
+        return _session_to_response(session, db)
+
+    # Update question index (only if not follow-up)
     if not result.get("follow_up_needed"):
         session.current_question_index = result.get("current_question_index", session.current_question_index + 1)
 
     db.flush()
 
+    # Create next question turn if there is one
     next_question_text = result.get("current_question", "")
     idx = session.current_question_index
     if next_question_text and idx < session.question_count_target:
@@ -258,23 +293,24 @@ def finish_interview(session_id: str, user_id: str = Depends(get_current_user_id
         .all()
     )
 
-    current_state = {
-        "session_id": session.id,
-        "turns": [
-            {
-                "turn_index": t.turn_index,
-                "question": t.question,
-                "score": t.score,
-                "strengths": (t.evaluation_json or {}).get("strengths", []),
-                "improvements": (t.evaluation_json or {}).get("improvements", []),
-                "risks": (t.evaluation_json or {}).get("risks", []),
-            }
-            for t in turns
-            if t.evaluation_json is not None
-        ],
-    }
+    conversation_turns = [
+        {
+            "turn_index": t.turn_index,
+            "question": t.question,
+            "user_answer": t.user_answer,
+            "score": t.score,
+            "strengths": (t.evaluation_json or {}).get("strengths", []),
+            "improvements": (t.evaluation_json or {}).get("improvements", []),
+            "risks": (t.evaluation_json or {}).get("risks", []),
+        }
+        for t in turns
+        if t.evaluation_json is not None
+    ]
 
-    result = run_finish(current_state, db_session_factory=lambda: type(db)(bind=db.bind))
+    result = run_interview_finish(
+        session_id,
+        db_session_factory=lambda: type(db)(bind=db.bind),
+    )
 
     if result.get("error"):
         raise HTTPException(status_code=500, detail=result["error"])

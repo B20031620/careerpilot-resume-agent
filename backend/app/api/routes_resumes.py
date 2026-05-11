@@ -121,15 +121,6 @@ def parse_resume(resume_id: str, user_id: str = Depends(get_current_user_id), db
     import os
     use_mock = os.getenv("USE_MOCK_LLM", "").lower() in ("true", "1", "yes")
 
-    if use_mock:
-        from app.agents.resume_match.nodes import MOCK_STRUCTURED_RESUME
-        resume.structured_json = MOCK_STRUCTURED_RESUME
-        resume.parse_status = "succeeded"
-        resume.parse_warnings = None
-        db.commit()
-        db.refresh(resume)
-        return resume
-
     # Step 1: Quick parse (no LLM, always succeeds)
     cleaned_text = clean_resume_text(resume.raw_text or "")
     quick_structured = normalize_resume_schema(quick_parse_resume(cleaned_text))
@@ -138,14 +129,20 @@ def parse_resume(resume_id: str, user_id: str = Depends(get_current_user_id), db
     resume.parse_warnings = None
     db.commit()
 
+    # Step 2: AI refinement (skipped in mock mode — quick parse is sufficient for demo)
+    if use_mock:
+        resume.parse_status = "succeeded"
+        resume.parse_warnings = None
+        db.commit()
+        db.refresh(resume)
+        return resume
+
     from app.core.config import settings
     if not settings.DEEPSEEK_API_KEY:
         resume.parse_warnings = {"warning": "未配置 DEEPSEEK_API_KEY，当前为快速解析结果，配置后可进行 AI 精修"}
         db.commit()
         db.refresh(resume)
         return resume
-
-    # Step 2: Try AI refinement
     try:
         loader = PromptLoader()
         messages = loader.render_messages("resume_parse", "v1", resume_text=cleaned_text)
@@ -156,10 +153,13 @@ def parse_resume(resume_id: str, user_id: str = Depends(get_current_user_id), db
         resp = provider.chat_sync(
             messages, temperature=0.2,
             response_format={"type": "json_object"},
-            max_tokens=2500,
+            max_tokens=8192,
         )
         content = resp["choices"][0]["message"]["content"] or ""
+        finish_reason = resp["choices"][0].get("finish_reason", "")
         if not content.strip():
+            if finish_reason == "length":
+                raise ValueError("LLM 输出被截断(max_tokens 不够)，请增加 max_tokens 或精简简历")
             raise ValueError("LLM returned empty content")
         ai_structured = normalize_resume_schema(json.loads(content))
         resume.structured_json = ai_structured
@@ -175,4 +175,13 @@ def parse_resume(resume_id: str, user_id: str = Depends(get_current_user_id), db
 
     db.commit()
     db.refresh(resume)
+
+    # Index structured resume into vector store for RAG retrieval
+    if resume.structured_json:
+        try:
+            from app.services.rag_service import rag_service
+            rag_service.index_resume(user_id, resume.id, resume.structured_json)
+        except Exception as e:
+            logger.warning("Failed to index resume into vector store: %s", e)
+
     return resume

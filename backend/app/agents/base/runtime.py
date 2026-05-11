@@ -7,6 +7,17 @@ from app.db.session import SessionLocal
 from app.services.llm.factory import create_llm_provider
 
 
+def _setup_langsmith():
+    """Auto-configure LangSmith tracing if enabled."""
+    from app.core.config import settings
+    if settings.LANGCHAIN_TRACING_V2.lower() in ("true", "1", "yes"):
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        if settings.LANGCHAIN_API_KEY:
+            os.environ["LANGCHAIN_API_KEY"] = settings.LANGCHAIN_API_KEY
+        if settings.LANGCHAIN_PROJECT:
+            os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT
+
+
 class RuntimeContext:
     """Shared runtime context passed to agent graph nodes."""
 
@@ -14,6 +25,7 @@ class RuntimeContext:
         self.use_mock = use_mock
         self._llm_provider = None
         self._db_session_factory = db_session_factory or SessionLocal
+        _setup_langsmith()
 
     @property
     def llm_provider(self):
