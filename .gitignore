@@ -19,3 +19,4 @@ backend/.venv/
 data/*.db
 backend/data/*.db
 backend/data/
+docs/

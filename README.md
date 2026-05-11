@@ -1,288 +1,177 @@
-# CareerPilot Resume Agent
+# CareerPilot - AI 求职助手
 
-基于 LangChain + LangGraph 的 AI 简历润色、JD 匹配分析、模拟面试与职场求助 Agent 项目。
+CareerPilot 是一个基于 LangGraph、RAG 和大语言模型的 AI Agent 求职助手。它不是简单的聊天壳子，而是围绕真实简历做解析、润色、模拟面试和职场沟通生成。
+
+项目重点展示：Agent 流程编排、简历结构化解析、RAG 检索、LLM JSON 输出约束、面试中断恢复、风险审查和前后端工程落地。
+
+## 核心功能
+
+| 功能 | 说明 |
+| --- | --- |
+| 简历解析 | 上传 DOCX/TXT/MD 简历，提取教育、经历、项目和技能，并结构化展示 |
+| AI 简历润色 | 基于简历内容生成逐条修改建议，标记风险等级，避免编造经历 |
+| 模拟面试 | AI 根据用户真实简历出题、追问、评分，并生成面试报告 |
+| 职场沟通 | 根据场景和语气生成 HR 回复、谈薪、离职沟通等草稿 |
+| RAG 记忆 | 将简历片段和润色建议写入向量库，让后续问答更贴近用户经历 |
+
+## AI 设计重点
+
+### 1. 简历解析：规则兜底 + LLM 精修
+
+简历解析分两层：
+
+1. 本地快速解析：用规则提取姓名、电话、邮箱、教育背景和技能关键词，保证上传后能立刻得到可用结果。
+2. DeepSeek 精修：调用大模型把散乱简历文本整理成统一 JSON 结构。
+
+为了避免 AI 输出不可控，后端做了三层保护：
+
+- 使用 JSON 模式约束模型输出。
+- 使用 schema normalizer 统一字段、类型和嵌套结构。
+- 当 LLM 超时或返回异常时，保留本地快速解析结果，不让用户看到空白页面。
+
+### 2. 面试 Agent：LangGraph 编排多轮策略
+
+模拟面试不是固定问答，而是一张 LangGraph 状态图。
+
+主要节点包括：
+
+- `init_interview`：加载简历、初始化难度和话题覆盖。
+- `generate_question`：结合 RAG 检索结果生成面试题。
+- `evaluate_answer`：评估用户回答，给出评分、优点、问题和追问建议。
+- `classify_answer`：根据分数把回答分为 weak、medium、strong。
+- `decide_strategy`：动态决定下一题策略。
+- `final_report`：汇总所有轮次并生成最终报告。
+
+路由策略示例：
+
+- 回答较弱：降低难度，围绕同一话题继续追问。
+- 回答一般：继续深挖细节。
+- 回答较强：切换话题并提高难度。
+- 连续多次较弱：提前结束并生成复盘建议。
+
+LangGraph 的 checkpoint 能让面试在每道题后暂停，等待用户回答后再恢复执行，适合真实多轮交互。
+
+### 3. RAG：让问题真正围绕用户经历
+
+简历解析完成后，系统会把工作经历、项目经历、技能等片段写入 ChromaDB。面试出题或简历润色时，先检索相关片段，再拼入 Prompt。
+
+这样 AI 不会只问泛泛的问题，而是能围绕用户真实经历发问，例如：
+
+- “你在某个项目里如何处理性能问题？”
+- “你负责的模块为什么能体现工程能力？”
+- “这段经历是否可以量化成果？”
+
+### 4. 风险审查：避免虚构经历
+
+简历润色不是简单把话写得更夸张。系统会给每条建议标记风险等级：
+
+- low：措辞优化，可以直接使用。
+- medium：需要用户确认事实。
+- high：可能涉及夸大、编造或无法证明的数据。
+
+高风险建议会进入二次审查，降低求职材料中的不诚信风险。
 
 ## 技术栈
 
-| 层        | 技术                                       |
-| -------- | ---------------------------------------- |
-| 前端       | React + Vite + TypeScript + Tailwind CSS |
-| 后端       | FastAPI + Python + SQLAlchemy            |
-| Agent 编排 | LangGraph                                |
-| LLM 集成   | LangChain + DeepSeek (OpenAI-compatible) |
-| 数据库      | SQLite (MVP)                             |
-
-### 4. 前后端联调流程
-
-前后端已完整联调，前端页面通过 API 客户端调用后端接口：
-
-1. **简历工作区** → `GET /api/resumes` 选择当前处理简历，后续功能默认围绕该简历展开
-2. **上传/分析页** → `POST /api/resumes` 或 `POST /api/resumes/upload` 创建/上传简历，自动设为当前简历并展示解析结果
-3. **岗位匹配页** → 默认读取当前简历，也可临时切换简历 + 输入 JD → `POST /api/jobs` 创建岗位 → `POST /api/matches` 生成匹配报告
-4. **简历润色页** → 默认读取当前简历，也可临时切换简历和岗位 → `POST /api/matches` 生成润色建议
-5. **历史报告页** → `GET /api/reports` 列表 → `GET /api/matches/{id}` 查看详情 → `DELETE /api/reports/{id}` 删除
-6. **设置页** → `GET /api/settings/model-status` 查看配置 + `POST /api/settings/test-model-connection` 测试连接
-
-### 5. 使用 Mock 模式本地演示
-
-无需 DeepSeek API Key 即可体验完整匹配分析流程：
-
-```bash
-# 启动后端（使用 Mock LLM）
-cd backend
-source .venv/bin/activate
-USE_MOCK_LLM=true uvicorn app.main:app --reload
-
-# 另一个终端启动前端
-cd frontend
-npm run dev
-```
-
-### 6. 完整 Demo 路线
-
-项目提供了示例数据文件，可快速体验完整流程：
-
-**Step 1 — 启动服务**
-
-```bash
-# 终端 1：后端（Mock 模式）
-cd backend && source .venv/bin/activate
-USE_MOCK_LLM=true uvicorn app.main:app --reload
-
-# 终端 2：前端
-cd frontend && npm run dev
-```
-
-打开 <http://localhost:5173，使用默认账号登录：`demo@careerpilot.local`> / `demo123456`。
-
-**Step 2 — 创建简历**
-
-1. 打开 <http://localhost:5173>
-2. 点击左侧「上传/分析」
-3. 标题输入：`AI工程师_张明`
-4. 将 `sample_data/resume_ai_engineer.md` 的内容粘贴到文本框
-5. 点击「开始深度解析」
-
-**Step 3 — 创建岗位 & 生成匹配报告**
-
-1. 点击左侧「岗位匹配」
-2. 选择刚才创建的简历
-3. 岗位名称输入：`高级AI Agent工程师`
-4. 公司名输入：`某头部AI公司`
-5. 将 `sample_data/jd_ai_agent_engineer.md` 的内容粘贴到 JD 文本框
-6. 点击「开始深度匹配」
-7. 查看匹配报告：综合评分、技能/项目/经验/表达四维评分、核心优势、关键差距、缺失关键词
-
-**Step 4 — 查看润色建议**
-
-1. 点击左侧「简历润色」
-2. 选择同一份简历和岗位
-3. 点击「生成润色建议」
-4. 左右对比查看原文与 AI 优化建议，注意风险等级标注
-
-**Step 5 — 查看历史报告**
-
-1. 点击左侧「历史报告」
-2. 查看所有已生成报告的列表
-3. 点击「查看」展开报告详情摘要
-
-**Step 6 — 切换当前简历**
-
-1. 点击左侧「简历工作区」
-2. 在「我的简历」里选择另一份简历并设为当前
-3. 进入岗位匹配、简历润色或模拟面试时，页面会默认使用当前简历；中途也可以在顶部选择器或页面选择框切换
-
-**Step 7 — 模拟面试**
-
-1. 点击左侧「模拟面试」
-2. 可选择已有简历和岗位 JD（可选）
-3. 点击「开始面试」
-4. 面试官提出问题，在文本框中输入回答，点击「提交回答」
-5. 右侧面板展示 AI 反馈：评分、优点、改进点、高风险提醒
-6. 点击「下一题」继续，或「结束面试」生成最终报告
-7. 最终报告包含综合评分、各轮详情和文本摘要
-
-### 7. 验证
-
-- 打开 <http://localhost:5173> 可以看到中文页面
-- 登录后默认进入「简历工作区」，旧 `/dashboard` 会自动跳转到 `/resumes`
-- 左侧导航可切换简历工作区、上传/分析、岗位匹配等核心页面
-- 顶部「当前简历」选择器可在任意业务页切换当前处理简历
-- 设置页可查看模型配置状态和测试连接
-- 运行 `cd frontend && npm run build` 验证前端编译
-- 运行 `cd backend && DEEPSEEK_API_KEY= USE_MOCK_LLM=true python -m pytest app/tests/ -v` 验证后端测试（49 个）
-
-### 认证
-
-| 方法   | 路径                   | 说明               |
-| ---- | -------------------- | ---------------- |
-| POST | `/api/auth/register` | 注册               |
-| POST | `/api/auth/login`    | 登录（返回 JWT token） |
-| GET  | `/api/auth/me`       | 获取当前用户信息         |
-
-默认 Demo 用户：`demo@careerpilot.local` / `demo123456`
-
-所有数据 API 均需 Bearer token 认证，按 user\_id 隔离数据。
-
-## 后端 API
-
-### 系统
-
-| 方法   | 路径                                    | 说明       |
-| ---- | ------------------------------------- | -------- |
-| GET  | `/health`                             | 健康检查     |
-| GET  | `/api/settings/model-status`          | 查看模型配置状态 |
-| POST | `/api/settings/test-model-connection` | 测试模型连接   |
-
-### 简历
-
-| 方法     | 路径                         | 说明                              |
-| ------ | -------------------------- | ------------------------------- |
-| POST   | `/api/resumes`             | 创建简历                            |
-| POST   | `/api/resumes/upload`      | 上传并解析简历文件（支持 DOCX、DOC、TXT、MD 等） |
-| GET    | `/api/resumes`             | 获取简历列表                          |
-| GET    | `/api/resumes/{resume_id}` | 获取简历详情                          |
-| DELETE | `/api/resumes/{resume_id}` | 删除简历（软删除）                       |
-
-创建简历请求体：
-
-```json
-{
-  "title": "前端工程师_张三",
-  "source_type": "text",
-  "raw_text": "简历原文..."
-}
-```
-
-### 岗位 JD
-
-| 方法     | 路径                   | 说明         |
-| ------ | -------------------- | ---------- |
-| POST   | `/api/jobs`          | 创建 JD      |
-| GET    | `/api/jobs`          | 获取 JD 列表   |
-| GET    | `/api/jobs/{job_id}` | 获取 JD 详情   |
-| DELETE | `/api/jobs/{job_id}` | 删除 JD（软删除） |
-
-创建 JD 请求体：
-
-```json
-{
-  "title": "高级AI工程师",
-  "company_name": "字节跳动",
-  "raw_text": "岗位描述原文..."
-}
-```
-
-### 报告
-
-| 方法     | 路径                         | 说明     |
-| ------ | -------------------------- | ------ |
-| GET    | `/api/reports`             | 获取报告列表 |
-| GET    | `/api/reports/{report_id}` | 获取报告详情 |
-| DELETE | `/api/reports/{report_id}` | 删除报告   |
-
-### 匹配分析
-
-| 方法   | 路径                         | 说明          |
-| ---- | -------------------------- | ----------- |
-| POST | `/api/matches`             | 运行简历/JD匹配分析 |
-| GET  | `/api/matches/{report_id}` | 获取匹配报告详情    |
-
-创建匹配请求体：
-
-```json
-{
-  "resume_id": "uuid",
-  "job_id": "uuid"
-}
-```
-
-匹配报告包含：overall\_score、skill\_score、project\_score、experience\_score、expression\_score、strengths、weaknesses、missing\_keywords、suggestions、report\_markdown。
-
-### 模拟面试
-
-| 方法   | 路径                                    | 说明                 |
-| ---- | ------------------------------------- | ------------------ |
-| POST | `/api/interviews`                     | 创建面试会话             |
-| GET  | `/api/interviews/{session_id}`        | 获取会话详情（含回合列表、当前问题） |
-| POST | `/api/interviews/{session_id}/answer` | 提交回答（返回评估结果和下一题）   |
-| POST | `/api/interviews/{session_id}/finish` | 结束面试（生成最终报告）       |
-
-创建面试请求体：
-
-```json
-{
-  "resume_id": "uuid (可选)",
-  "jd_id": "uuid (可选)",
-  "interview_type": "technical_1",
-  "question_count_target": 5
-}
-```
-
-提交回答请求体：
-
-```json
-{
-  "answer": "我的回答..."
-}
-```
-
-回答评估返回：score、strengths、improvements、risks、follow\_up\_needed。
-最终报告返回：final\_report\_json（含 average\_score、total\_turns、各轮详情）、final\_report\_markdown。
-
-**Mock 模式**：设置 `USE_MOCK_LLM=true` 环境变量后，匹配分析使用稳定的假数据而不调用 DeepSeek API，适合开发和测试。
-
-**未配置 API Key**：当 `DEEPSEEK_API_KEY` 未配置且 `USE_MOCK_LLM` 未启用时，匹配接口返回 422 错误和友好的配置提示，不会导致 500。
+| 模块 | 技术 |
+| --- | --- |
+| 前端 | React + Vite + TypeScript + Tailwind CSS |
+| 后端 | FastAPI + SQLAlchemy + SQLite |
+| Agent | LangGraph |
+| LLM | DeepSeek OpenAI-compatible API |
+| RAG | ChromaDB + Doubao Embedding |
+| 测试 | pytest + pytest-asyncio |
 
 ## 项目结构
 
-```
+```text
 careerpilot-resume-agent/
-  frontend/           # React + Vite + TypeScript 前端
-    src/
-      components/     # 共享组件 (Sidebar, AppLayout, Topbar)
-      pages/          # 页面组件
-      api/            # API 客户端
-      styles/         # 全局样式
-  backend/            # FastAPI 后端
+  frontend/                 # React 前端
+  backend/                  # FastAPI 后端
     app/
-      main.py         # FastAPI 应用入口 (lifespan create_all)
-      core/config.py  # 环境变量配置
-      db/             # 数据库 (SQLAlchemy session + base)
-      models/         # ORM 模型 (Resume, JobDescription, Report, Interview, AgentRun)
-      schemas/        # Pydantic 请求/响应 schema
-      api/            # API 路由 (health, settings, resumes, jobs, reports, matches)
-      agents/         # LangGraph Agent (resume_match + mock_interview)
-      prompts/        # Prompt YAML 模板 (resume_parse, jd_analysis, resume_match)
-      services/llm/   # LLM Provider 抽象层 (含同步 chat_sync 方法)
-      tests/          # 测试 (49 个，含认证/数据隔离/文件上传幂等/解析/面试/真实 LLM 路径 mock 测试)
-    data/             # SQLite 数据库文件 (gitignored)
-  sample_data/        # 示例数据 (简历 + JD)
-  docs/               # 项目文档
-  .env.example        # 环境变量模板
+      agents/               # LangGraph Agent
+      api/                  # API 路由
+      models/               # SQLAlchemy 模型
+      prompts/              # Prompt 模板
+      services/             # LLM、RAG、Embedding、文件解析等服务
+      tests/                # 后端测试
+  sample_data/              # 示例数据
 ```
 
-## 文档目录
+`docs/` 是本地开发说明资料，不上传到 GitHub。
 
-- [文档索引](./docs/00_index.md)
-- [项目需求书](./docs/01_requirements.md)
-- [用户场景文档](./docs/02_user_scenarios.md)
-- [Agent 流程图](./docs/03_agent_flows.md)
-- [数据结构设计](./docs/04_data_model.md)
-- [技术架构说明](./docs/05_architecture.md)
-- [维护与迭代说明](./docs/06_maintenance_plan.md)
-- [大模型接入说明](./docs/07_llm_provider.md)
-- [开发实施计划](./docs/08_implementation_plan.md)
-- [Git 与 GitHub 说明](./docs/09_git_github.md)
-- [界面设计说明](./docs/design.md)
+## 本地启动
 
-## 默认大模型方案
+### 1. 配置环境变量
 
-项目默认接入 DeepSeek，使用 OpenAI 兼容接口。
+```bash
+cp .env.example backend/.env
+```
 
-- Provider：DeepSeek
-- Base URL：<https://api.deepseek.com>
-- 默认模型：deepseek-v4-pro
-- 密钥来源：本地 `.env` 文件中的 `DEEPSEEK_API_KEY`
+在 `backend/.env` 中按需配置：
 
-**注意：真实 API Key 不应写入 README、设计文档、代码或提交到 Git 仓库。**
+```env
+DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-v4-pro
+DOUBAO_EMBEDDING_API_KEY=
+```
+
+真实 API Key 只放在本地 `.env`，不要提交到 GitHub。
+
+### 2. 启动后端
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+uvicorn app.main:app --reload
+```
+
+后端默认地址：`http://127.0.0.1:8000`
+
+### 3. 启动前端
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+前端默认地址：`http://127.0.0.1:5173`
+
+默认 Demo 账号：
+
+```text
+demo@careerpilot.local
+demo123456
+```
+
+## 测试
+
+后端测试：
+
+```bash
+cd backend
+DEEPSEEK_API_KEY= USE_MOCK_LLM=true python -m pytest app/tests -q
+```
+
+前端构建：
+
+```bash
+cd frontend
+npm run build
+```
+
+## 面试介绍亮点
+
+这个项目适合从以下角度介绍：
+
+- 为什么用 LangGraph，而不是普通 for 循环调用 LLM。
+- 如何用 checkpoint 支持多轮面试中断和恢复。
+- 如何用 RAG 让 AI 基于真实简历出题。
+- 如何约束 LLM 输出稳定 JSON。
+- 如何做 AI 失败兜底，保证产品可用。
+- 如何做用户数据隔离、历史记录和本地向量检索。
+- 如何处理简历润色中的真实性和合规风险。
